@@ -92,3 +92,5 @@ let predict t x =
 ;;
 
 let predict_metrics t m = predict t (Dataset.features m)
+
+let bundled = lazy (Yojson.Safe.from_string Model_data.json |> of_json |> Or_error.ok_exn)

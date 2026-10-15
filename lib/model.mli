@@ -38,3 +38,7 @@ val evaluation : t -> Yojson.Safe.t
 val predict : t -> float array -> float
 
 val predict_metrics : t -> Metrics.t -> float
+
+(** The model shipped with this library ([models/leader-forward-sharpe-gbdt]), parsed on
+    first use. *)
+val bundled : t Lazy.t
