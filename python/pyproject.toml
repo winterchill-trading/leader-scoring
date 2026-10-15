@@ -1,0 +1,10 @@
+[project]
+name = "leader-scoring-train"
+version = "0.1.0"
+description = "Trains and exports the learned leader score that leader-scoring scores in OCaml"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.4",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.16",
+]
