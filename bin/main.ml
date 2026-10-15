@@ -100,9 +100,120 @@ let score =
              Core.printf "  %-28s %s\n" (Metric.name metric) (fmt v)))))
 ;;
 
+let portfolios =
+  Command.async_or_error
+    ~summary:
+      "Record the portfolio curves of the leaderboard's top accounts (mainnet, read only)"
+    (let%map_open.Command top =
+       flag "-top" (optional_with_default 300 int) ~doc:"N accounts by all-time pnl"
+     and min_value =
+       flag
+         "-min-account-value"
+         (optional_with_default 100_000. float)
+         ~doc:"USD smallest account value"
+     and out = flag "-out" (required string) ~doc:"DIR one recording per account" in
+     fun () ->
+       let open Deferred.Or_error.Let_syntax in
+       let source = Hl_source.create (Hl_client.Config.mainnet ()) in
+       let%bind board = Hl_client.Leaderboard.fetch ~network:`Mainnet () in
+       let rows =
+         Hl_client.Leaderboard.rank
+           ~min_account_value:min_value
+           board
+           ~window:All_time
+           ~by:`Pnl
+           ~limit:top
+       in
+       Core.printf "%d accounts\n%!" (List.length rows);
+       Deferred.Or_error.List.iteri ~how:`Sequential rows ~f:(fun i (row, _) ->
+         let address = Hl_protocol.Address.to_string row.eth_address in
+         let dir = out ^/ address in
+         match%bind Sys.file_exists dir |> Deferred.ok with
+         | `Yes -> return ()
+         | `No | `Unknown ->
+           let fetched_at = Time_ns.now () in
+           let%bind body =
+             Hl_source.info
+               source
+               (`Assoc [ "type", `String "portfolio"; "user", `String address ])
+           in
+           let raw =
+             { Raw.meta =
+                 { address; fetched_at; from = Time_ns.epoch; until = fetched_at; fills_capped = false }
+             ; fills_pages = []
+             ; funding_pages = []
+             ; state = None
+             ; portfolio = Some body
+             }
+           in
+           let%map () = Raw.save raw ~dir |> Deferred.ok in
+           if i % 25 = 0 then Core.printf "%d %s\n%!" i address))
+;;
+
+let dataset =
+  Command.async_or_error
+    ~summary:"Write training rows: synthetic leaders and replayed recordings, as CSV"
+    (let%map_open.Command synthetic =
+       flag "-synthetic" (optional_with_default 0 int) ~doc:"N synthetic leaders"
+     and days = flag "-days" (optional_with_default 400 int) ~doc:"D synthetic history"
+     and seed = flag "-seed" (optional_with_default 1 int) ~doc:"N synthetic seed"
+     and replay =
+       flag "-replay" (optional string) ~doc:"DIR directory of recordings (one per account)"
+     and window =
+       flag
+         "-portfolio-window"
+         (optional_with_default "allTime" string)
+         ~doc:"W portfolio curve of replayed recordings"
+     and group =
+       flag "-replay-group" (optional_with_default "mainnet" string) ~doc:"NAME group column"
+     and out = flag "-out" (required string) ~doc:"FILE CSV to write" in
+     fun () ->
+       let open Deferred.Or_error.Let_syntax in
+       let start = Time_ns.of_string_with_utc_offset "2025-01-01T00:00:00Z" in
+       let synthetic_rows =
+         Synthetic.universe ~seed ~start ~leaders:synthetic ~days
+         |> List.concat_map ~f:(fun (h, _) ->
+           Dataset.rows ~group:"synthetic" (Track_record.build h))
+       in
+       let%bind replay_rows =
+         match replay with
+         | None -> return []
+         | Some dir ->
+           let%bind entries = Sys.readdir dir |> Deferred.ok in
+           let dirs = Array.to_list entries |> List.sort ~compare:String.compare in
+           let%map histories =
+             Deferred.Or_error.List.filter_map ~how:`Sequential dirs ~f:(fun d ->
+               Deferred.map (Raw.load ~dir:(dir ^/ d)) ~f:(function
+                 | Error _ -> Ok None
+                 | Ok raw -> Ok (Result.ok (Raw.to_history ~portfolio_window:window raw))))
+           in
+           List.concat_map histories ~f:(fun h -> Dataset.rows ~group (Track_record.build h))
+       in
+       let rows = synthetic_rows @ replay_rows in
+       let%map () =
+         Writer.with_file out ~f:(fun w ->
+           Writer.write_line w Dataset.Row.csv_header;
+           List.iter rows ~f:(fun r -> Writer.write_line w (Dataset.Row.to_csv r));
+           Deferred.unit)
+         |> Deferred.ok
+       in
+       Core.printf
+         "%s: %d rows (%d synthetic, %d %s), %d labelled\n"
+         out
+         (List.length rows)
+         (List.length synthetic_rows)
+         (List.length replay_rows)
+         group
+         (List.count rows ~f:(fun r -> Option.is_some r.label)))
+;;
+
 let () =
   Command.group
     ~summary:"Leader track records, metrics and scores (Hyperliquid, read only)"
-    [ "record", record; "score", score ]
+    [ "record", record
+    ; "score", score
+    ; "portfolios", portfolios
+    ; "dataset", dataset
+    ]
   |> Command_unix.run
 ;;
