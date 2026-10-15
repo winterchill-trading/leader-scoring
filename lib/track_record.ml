@@ -187,11 +187,19 @@ end
 
 module Event = struct
   type t =
+    | Seed of
+        { time : Time_ns.t
+        ; coin : string
+        ; size : float
+        ; px : float
+        ; mark : float
+        }
     | Fill of Fill.t
     | Funding of Funding.t
     | Snapshot of Snapshot.t
 
   let time = function
+    | Seed s -> s.time
     | Fill f -> f.time
     | Funding f -> f.time
     | Snapshot s -> s.time
@@ -199,6 +207,7 @@ module Event = struct
 
   (* Within one instant: fills, then funding, then the snapshot that reports the result. *)
   let rank = function
+    | Seed _ -> -1
     | Fill _ -> 0
     | Funding _ -> 1
     | Snapshot _ -> 2
@@ -355,9 +364,60 @@ let build ?initial_equity ?until (history : History.t) =
       b.seen <- true);
     anchor := Some (s.account_value -. pnl ())
   in
+  let on_seed ~time ~coin ~size ~px ~mark =
+    let b = book coin in
+    b.seen <- true;
+    b.mark <- mark;
+    apply b ~coin ~q:size ~px ~fee:0. ~at:time ~seeded:true ~liquidation:false
+  in
+  let start =
+    List.concat
+      [ List.map h.fills ~f:(fun f -> f.time)
+      ; List.map h.funding ~f:(fun f -> f.time)
+      ; List.map h.snapshots ~f:(fun s -> s.time)
+      ; List.map h.equity_curve ~f:(fun p -> p.time)
+      ]
+    |> List.min_elt ~compare:Time_ns.compare
+    |> Option.value ~default:h.fetched_at
+  in
+  (* Positions held when the history starts: a coin's first fill says what was held
+     before it, and a coin in the latest snapshot with no fill at all was held for the
+     whole period (marked at the snapshot's price throughout). *)
+  let seeds =
+    let first_fill = String.Table.create () in
+    List.iter h.fills ~f:(fun f ->
+      if not (Hashtbl.mem first_fill f.coin) then Hashtbl.set first_fill ~key:f.coin ~data:f);
+    let from_fills =
+      Hashtbl.data first_fill
+      |> List.filter_map ~f:(fun (f : Fill.t) ->
+        match f.position_before with
+        | Some p when not (is_flat p) ->
+          Some (Event.Seed { time = start; coin = f.coin; size = p; px = f.px; mark = f.px })
+        | _ -> None)
+    in
+    let from_snapshot =
+      match List.last h.snapshots with
+      | None -> []
+      | Some s ->
+        List.filter_map s.positions ~f:(fun (p : Snapshot.Position.t) ->
+          if Hashtbl.mem first_fill p.coin || is_flat p.size
+          then None
+          else (
+            match Option.first_some p.entry_px p.mark_px with
+            | None -> None
+            | Some px ->
+              let mark = Option.value p.mark_px ~default:px in
+              Some (Event.Seed { time = start; coin = p.coin; size = p.size; px; mark })))
+    in
+    List.sort (from_fills @ from_snapshot) ~compare:(fun a b ->
+      match a, b with
+      | Event.Seed a, Event.Seed b -> String.compare a.coin b.coin
+      | _ -> 0)
+  in
   let events =
     List.concat
-      [ List.map h.fills ~f:(fun f -> Event.Fill f)
+      [ seeds
+      ; List.map h.fills ~f:(fun f -> Event.Fill f)
       ; List.map h.funding ~f:(fun f -> Event.Funding f)
       ; List.map h.snapshots ~f:(fun s -> Event.Snapshot s)
       ]
@@ -379,7 +439,8 @@ let build ?initial_equity ?until (history : History.t) =
     | [] -> ()
     | e :: rest ->
       (match e with
-       | Event.Fill f -> on_fill f
+       | Event.Seed { time; coin; size; px; mark } -> on_seed ~time ~coin ~size ~px ~mark
+       | Fill f -> on_fill f
        | Funding f -> on_funding f
        | Snapshot s -> on_snapshot s);
       (match rest with

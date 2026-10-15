@@ -1,10 +1,13 @@
 (** A leader's track record: round-trip trades and an equity curve with exposure, rebuilt
     from a {!History.t}.
 
-    {b Positions.} Fills are replayed per coin on average-entry books. A coin whose first
-    fill reports a non-zero [position_before] gets a seeded opening one millisecond
-    earlier at that fill's price (the real entry is older than the history), and so does
-    a coin held in the first snapshot before any fill of it; such trades say [seeded].
+    {b Positions.} Fills are replayed per coin on average-entry books. Positions held
+    when the history starts are seeded at its first instant: a coin whose first fill
+    reports a non-zero [position_before] at that fill's price, and a coin in the latest
+    snapshot with no fill at all at the snapshot's entry price, marked at the snapshot's
+    price throughout. The real entries are older than the history; such trades say
+    [seeded]. A later fill whose [position_before] disagrees with the replay repairs the
+    position at its price and counts as a mismatch.
 
     {b Trades.} A trade opens when a coin's position leaves zero and closes when it
     returns to zero; a fill that flips the position closes one trade and opens the next,
