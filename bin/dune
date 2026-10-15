@@ -1,0 +1,15 @@
+(executable
+ (name main)
+ (public_name leader-scoring)
+ (package leader-scoring-hl)
+ (libraries
+  core
+  core_unix.command_unix
+  async
+  yojson
+  uri
+  leader-scoring
+  leader-scoring-hl
+  hl-client)
+ (preprocess
+  (pps ppx_jane)))
