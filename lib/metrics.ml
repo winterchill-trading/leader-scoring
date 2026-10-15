@@ -274,3 +274,27 @@ let to_json t =
          | Some x -> `Float x
          | None -> `Null )))
 ;;
+
+let of_alist ?(returns = [||]) ~bar alist =
+  let given = Metric.Map.of_alist_reduce alist ~f:(fun _ b -> b) in
+  { values = List.map Metric.all ~f:(fun m -> m, Option.join (Map.find given m)) |> Metric.Map.of_alist_exn
+  ; bar
+  ; returns
+  }
+;;
+
+let of_json ~bar = function
+  | `Assoc fields ->
+    Ok
+      (of_alist
+         ~bar
+         (List.filter_map fields ~f:(fun (name, v) ->
+            Option.map (Metric.of_name name) ~f:(fun m ->
+              ( m
+              , match v with
+                | `Float x -> Some x
+                | `Int x -> Some (Float.of_int x)
+                | `Intlit s -> Float.of_string_opt s
+                | _ -> None )))))
+  | json -> Or_error.errorf "metrics: expected an object, got %s" (Yojson.Safe.to_string json)
+;;

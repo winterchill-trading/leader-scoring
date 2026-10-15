@@ -42,3 +42,10 @@ val returns : t -> float array
 
 (** [{"name": value or null, ...}] in {!Metric.all} order. *)
 val to_json : t -> Yojson.Safe.t
+
+(** Metrics from stored values, for example read back from {!to_json}; missing metrics
+    are [None]. [returns] defaults to empty. *)
+val of_alist : ?returns:float array -> bar:Time_ns.Span.t -> (Metric.t * float option) list -> t
+
+(** Reads {!to_json} output: unknown names are ignored. *)
+val of_json : bar:Time_ns.Span.t -> Yojson.Safe.t -> t Or_error.t
