@@ -53,41 +53,88 @@ module Estimate = struct
   [@@deriving sexp_of]
 end
 
-let walk ?(unfilled_penalty_bps = 100.) (book : Book.t) ~side ~notional =
-  match Book.mid book with
-  | None -> None
-  | Some mid ->
-    let levels =
+(* One side of a book as running totals, so a walk is a binary search instead of a scan:
+   [cum_notional.(k)] and [cum_qty.(k)] hold levels [0 .. k - 1]. *)
+module Depth = struct
+  type t =
+    { px : float array
+    ; cum_notional : float array
+    ; cum_qty : float array
+    }
+
+  let of_levels (levels : Book.level array) =
+    let n = Array.length levels in
+    let cum_notional = Array.create ~len:(n + 1) 0.
+    and cum_qty = Array.create ~len:(n + 1) 0. in
+    for k = 0 to n - 1 do
+      cum_notional.(k + 1) <- cum_notional.(k) +. (levels.(k).px *. levels.(k).size);
+      cum_qty.(k + 1) <- cum_qty.(k) +. levels.(k).size
+    done;
+    { px = Array.map levels ~f:(fun l -> l.px); cum_notional; cum_qty }
+  ;;
+
+  (* [(filled notional, quantity)] for [notional] taken from the best level on. *)
+  let[@inline] take t ~notional =
+    let n = Array.length t.px in
+    if n = 0
+    then #(0., 0.)
+    else if Float.( >= ) notional t.cum_notional.(n)
+    then #(t.cum_notional.(n), t.cum_qty.(n))
+    else (
+      (* smallest k with cum_notional.(k + 1) >= notional *)
+      let lo = ref 0
+      and hi = ref (n - 1) in
+      while !lo < !hi do
+        let mid = (!lo + !hi) / 2 in
+        if Float.( >= ) t.cum_notional.(mid + 1) notional then hi := mid else lo := mid + 1
+      done;
+      let k = !lo in
+      let rest = notional -. t.cum_notional.(k) in
+      #(notional, t.cum_qty.(k) +. (rest /. t.px.(k))))
+  ;;
+end
+
+module Prepared = struct
+  type t =
+    { mid : float
+    ; bids : Depth.t
+    ; asks : Depth.t
+    }
+
+  let of_book (b : Book.t) =
+    Option.map (Book.mid b) ~f:(fun mid ->
+      { mid; bids = Depth.of_levels b.bids; asks = Depth.of_levels b.asks })
+  ;;
+
+  let walk ~unfilled_penalty_bps t ~side ~notional =
+    let depth =
       match side with
-      | `Buy -> book.asks
-      | `Sell -> book.bids
+      | `Buy -> t.asks
+      | `Sell -> t.bids
     in
-    let remaining = ref notional
-    and filled = ref 0.
-    and qty = ref 0. in
-    Array.iter levels ~f:(fun l ->
-      if Float.( > ) !remaining 0.
-      then (
-        let take = Float.min !remaining (l.px *. l.size) in
-        remaining := !remaining -. take;
-        filled := !filled +. take;
-        qty := !qty +. (take /. l.px)));
+    let #(filled, qty) = Depth.take depth ~notional in
     let filled_cost =
-      if Float.( > ) !qty 0.
+      if Float.( > ) qty 0.
       then (
-        let avg = !filled /. !qty in
+        let avg = filled /. qty in
         match side with
-        | `Buy -> (avg -. mid) /. mid *. 10_000.
-        | `Sell -> (mid -. avg) /. mid *. 10_000.)
+        | `Buy -> (avg -. t.mid) /. t.mid *. 10_000.
+        | `Sell -> (t.mid -. avg) /. t.mid *. 10_000.)
       else 0.
     in
-    let unfilled = Float.max 0. (notional -. !filled) in
+    let unfilled = Float.max 0. (notional -. filled) in
     let cost_bps =
       if Float.( > ) notional 0.
-      then ((filled_cost *. !filled) +. (unfilled_penalty_bps *. unfilled)) /. notional
+      then ((filled_cost *. filled) +. (unfilled_penalty_bps *. unfilled)) /. notional
       else 0.
     in
-    Some { Estimate.notional; filled = !filled; cost_bps }
+    { Estimate.notional; filled; cost_bps }
+  ;;
+end
+
+let walk ?(unfilled_penalty_bps = 100.) book ~side ~notional =
+  Option.map (Prepared.of_book book) ~f:(fun p ->
+    Prepared.walk ~unfilled_penalty_bps p ~side ~notional)
 ;;
 
 module Config = struct
@@ -143,15 +190,50 @@ let leader_orders (tr : Track_record.t) =
     time, coin, signed)
 ;;
 
-let costs ?(unfilled_penalty_bps = 100.) ~books tr ~follower_equity =
+(* Each costed order as (book, side, notional per follower dollar), computed once. *)
+let prepare ~books tr =
+  let prepared = Map.filter_map books ~f:Prepared.of_book in
   leader_orders tr
   |> Array.filter_map ~f:(fun (time, coin, signed) ->
-    match Map.find books coin, Track_record.equity_at tr time with
+    match Map.find prepared coin, Track_record.equity_at tr time with
     | Some book, Some e when Float.( > ) e 0. ->
-      let notional = Float.abs signed *. follower_equity /. e in
-      let side = if Float.( > ) signed 0. then `Buy else `Sell in
-      walk ~unfilled_penalty_bps book ~side ~notional
+      Some (book, (if Float.( > ) signed 0. then `Buy else `Sell), Float.abs signed /. e)
     | _ -> None)
+;;
+
+let costs ~unfilled_penalty_bps orders ~follower_equity =
+  Array.map orders ~f:(fun (book, side, per_dollar) ->
+    Prepared.walk ~unfilled_penalty_bps book ~side ~notional:(per_dollar *. follower_equity))
+;;
+
+(* The notional-weighted mean cost without building an estimate per order: the
+   capacity bisection calls this about 45 times. *)
+let mean_cost ~unfilled_penalty_bps orders ~follower_equity =
+  let mutable total = 0. in
+  let mutable weighted = 0. in
+  for i = 0 to Array.length orders - 1 do
+    let (book : Prepared.t), side, per_dollar = orders.(i) in
+    let notional = per_dollar *. follower_equity in
+    let depth =
+      match side with
+      | `Buy -> book.asks
+      | `Sell -> book.bids
+    in
+    let #(filled, qty) = Depth.take depth ~notional in
+    let filled_cost =
+      if Float.( > ) qty 0.
+      then (
+        let avg = filled /. qty in
+        match side with
+        | `Buy -> (avg -. book.mid) /. book.mid *. 10_000.
+        | `Sell -> (book.mid -. avg) /. book.mid *. 10_000.)
+      else 0.
+    in
+    let unfilled = Float.max 0. (notional -. filled) in
+    total <- total +. notional;
+    weighted <- weighted +. (filled_cost *. filled) +. (unfilled_penalty_bps *. unfilled)
+  done;
+  if Float.( > ) total 0. then Some (weighted /. total) else None
 ;;
 
 let weighted_mean (estimates : Estimate.t array) =
@@ -161,14 +243,15 @@ let weighted_mean (estimates : Estimate.t array) =
   else None
 ;;
 
-let cost_at ?unfilled_penalty_bps ~books tr ~follower_equity =
-  weighted_mean (costs ?unfilled_penalty_bps ~books tr ~follower_equity)
+let cost_at ?(unfilled_penalty_bps = 100.) ~books tr ~follower_equity =
+  weighted_mean (costs ~unfilled_penalty_bps (prepare ~books tr) ~follower_equity)
 ;;
 
 let estimate ?(config = Config.default) ~books (tr : Track_record.t) =
   let unfilled_penalty_bps = config.unfilled_penalty_bps in
+  let orders = prepare ~books tr in
   let point follower_equity =
-    let es = costs ~unfilled_penalty_bps ~books tr ~follower_equity in
+    let es = costs ~unfilled_penalty_bps orders ~follower_equity in
     let bps = Array.map es ~f:(fun e -> e.cost_bps) in
     let total = Array.sum (module Float) es ~f:(fun e -> e.notional) in
     let unfilled = Array.sum (module Float) es ~f:(fun e -> e.notional -. e.filled) in
@@ -180,7 +263,7 @@ let estimate ?(config = Config.default) ~books (tr : Track_record.t) =
     ; unfilled_share = (if Float.( > ) total 0. then unfilled /. total else 0.)
     }
   in
-  let cost x = cost_at ~unfilled_penalty_bps ~books tr ~follower_equity:x in
+  let cost x = mean_cost ~unfilled_penalty_bps orders ~follower_equity:x in
   let capacity =
     (* bisection on log10 equity between 1 USD and 10^10 USD; 40 steps is far below a
        cent of resolution at any size *)
@@ -200,15 +283,15 @@ let estimate ?(config = Config.default) ~books (tr : Track_record.t) =
         done;
         Some (10. **. !lo))
   in
-  let orders = leader_orders tr in
+  let all_orders = leader_orders tr in
   let coins_without_book =
-    Array.to_list orders
+    Array.to_list all_orders
     |> List.filter_map ~f:(fun (_, coin, _) -> Option.some_if (not (Map.mem books coin)) coin)
     |> List.dedup_and_sort ~compare:String.compare
   in
   { curve = List.map config.follower_equities ~f:point
   ; capacity
-  ; orders = Array.length orders
+  ; orders = Array.length all_orders
   ; coins_without_book
   }
 ;;
