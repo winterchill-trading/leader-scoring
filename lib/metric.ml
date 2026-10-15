@@ -92,7 +92,7 @@ let info : t -> info = function
   | Cagr ->
     { name = "cagr"
     ; label = "CAGR"
-    ; formula = "(e_n / e_0) ^ (365 / D) - 1; only when D >= 7"
+    ; formula = "(e_n / e_0) ^ (365 / D) - 1; only when D >= 90"
     ; unit = Ratio
     ; better = Higher
     }

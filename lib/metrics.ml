@@ -96,7 +96,8 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
   set Total_return total_return;
   let cagr =
     match total_return with
-    | Some tr when Float.( >= ) span_days 7. ->
+    (* annualizing less than a quarter turns a good month into thousands of percent *)
+    | Some tr when Float.( >= ) span_days 90. ->
       if Float.( <= ) (1. +. tr) 0.
       then Some (-1.)
       else finite (((1. +. tr) **. (365. /. span_days)) -. 1.)

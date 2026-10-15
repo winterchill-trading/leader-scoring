@@ -49,11 +49,11 @@ let%expect_test "a 60-day venue curve and four round trips" =
     {|
     (bar 1d)
     total_return                 0.434018
-    cagr                         7.961363
+    cagr                         -
     volatility                   0.314796
     sharpe                       7.150135
     sortino                      8.097868
-    calmar                       79.613633
+    calmar                       -
     return_over_drawdown         4.340181
     max_drawdown                 0.1
     max_drawdown_duration_days   13.
