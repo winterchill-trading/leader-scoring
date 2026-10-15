@@ -18,8 +18,8 @@ module Config : sig
     }
   [@@deriving sexp]
 
-  (** Risk-adjusted return first, then drawdown and tail risk, consistency, trade
-      quality, and penalties for leverage and concentration:
+  (** Risk-adjusted return first, then drawdown and tail risk, consistency, trade quality,
+      and penalties for leverage and concentration:
       {v
       sharpe 0.15, sortino 0.10, return_over_drawdown 0.10, total_return 0.05,
       max_drawdown 0.15, cvar_95 0.05, rolling_positive_share 0.10, profit_factor 0.05,
@@ -53,9 +53,8 @@ module Ranked : sig
   [@@deriving sexp_of]
 end
 
-(** [rank config universe], with [(account, metrics, covered days)] per leader. The
-    result is sorted: ranked leaders by score, then the rest by score. Ties keep the
-    input order. *)
+(** [rank config universe], with [(account, metrics, covered days)] per leader. The result
+    is sorted: ranked leaders by score, then the rest by score. Ties keep the input order. *)
 val rank : Config.t -> (string * Metrics.t * float) list -> Ranked.t list
 
 (** Percentile helper used by {!rank}: where [x] falls in [xs] (which includes it). *)

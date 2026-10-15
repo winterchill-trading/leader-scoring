@@ -10,8 +10,8 @@
     fills. The history has the fills and one snapshot at the end of each day with the
     positions marked at that day's close, so the rebuilt equity curve is marked daily.
 
-    Nothing here is calibrated to a real venue: the generator exists so the pipeline
-    has a target with a known, partly persistent signal. *)
+    Nothing here is calibrated to a real venue: the generator exists so the pipeline has a
+    target with a known, partly persistent signal. *)
 
 open! Core
 

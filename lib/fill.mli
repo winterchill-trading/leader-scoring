@@ -15,8 +15,8 @@ module Stable : sig
       ; sz : float (** signed: positive buys, negative sells *)
       ; fee : float (** paid, in quote currency; a rebate is negative *)
       ; position_before : float option
-      (** the signed position in [coin] just before this fill, when the venue reports
-          it (Hyperliquid's [startPosition]); used to seed positions opened before the
+      (** the signed position in [coin] just before this fill, when the venue reports it
+          (Hyperliquid's [startPosition]); used to seed positions opened before the
           history starts *)
       ; liquidation : bool
       ; id : int (** venue trade id, for ordering fills in the same instant *)

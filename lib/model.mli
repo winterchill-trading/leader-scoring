@@ -1,6 +1,6 @@
 (** The learned score: a gradient-boosted regression forest trained in Python
-    ([python/train.py], scikit-learn's HistGradientBoostingRegressor) and exported as
-    JSON ([python/export.py]); scored here with no Python at run time.
+    ([python/train.py], scikit-learn's HistGradientBoostingRegressor) and exported as JSON
+    ([python/export.py]); scored here with no Python at run time.
 
     Format 1:
     {v
@@ -13,9 +13,9 @@
     v}
 
     [feature = -1] marks a leaf. A split sends [x <= threshold] left and NaN to
-    [missing_left]. The prediction is [base_score] plus each tree's leaf value, summed
-    in tree order, which reproduces scikit-learn's own prediction to the last bit. The
-    model predicts {!Dataset.label}: the forward 30-day risk-adjusted return. *)
+    [missing_left]. The prediction is [base_score] plus each tree's leaf value, summed in
+    tree order, which reproduces scikit-learn's own prediction to the last bit. The model
+    predicts {!Dataset.label}: the forward 30-day risk-adjusted return. *)
 
 open! Core
 

@@ -43,7 +43,8 @@ let create
 
 let rank ?(config = Score.Config.default) reports =
   let by_account =
-    List.map reports ~f:(fun r -> r.record.account, r) |> String.Map.of_alist_reduce ~f:(fun a _ -> a)
+    List.map reports ~f:(fun r -> r.record.account, r)
+    |> String.Map.of_alist_reduce ~f:(fun a _ -> a)
   in
   Score.rank
     config
@@ -51,11 +52,11 @@ let rank ?(config = Score.Config.default) reports =
        ( r.record.account
        , r.metrics
        , Time_ns.Span.to_day (Time_ns.diff r.record.until r.record.from) )))
-  |> List.map ~f:(fun (ranked : Score.Ranked.t) -> Map.find_exn by_account ranked.account, ranked)
+  |> List.map ~f:(fun (ranked : Score.Ranked.t) ->
+    Map.find_exn by_account ranked.account, ranked)
 ;;
 
 let ms t = `Int (Time_ns.to_int_ns_since_epoch t / 1_000_000)
-
 let num x = if Float.is_finite x then `Float x else `Null
 
 let opt = function
@@ -67,9 +68,7 @@ let thin (points : Equity_point.t array) ~max_points =
   let n = Array.length points in
   if n <= max_points || max_points < 2
   then points
-  else
-    Array.init max_points ~f:(fun i ->
-      points.(i * (n - 1) / (max_points - 1)))
+  else Array.init max_points ~f:(fun i -> points.(i * (n - 1) / (max_points - 1)))
 ;;
 
 let metric_json metric value =
@@ -152,7 +151,8 @@ let to_json ?(max_points = 400) t ranked =
       , `List
           (thin tr.equity ~max_points
            |> Array.to_list
-           |> List.map ~f:(fun (p : Equity_point.t) -> `List [ ms p.time; num p.equity ])) )
+           |> List.map ~f:(fun (p : Equity_point.t) -> `List [ ms p.time; num p.equity ])
+          ) )
     ; ( "capacity"
       , Option.value_map t.copyability ~default:`Null ~f:(fun c ->
           capacity_json c ~max_cost_bps:t.max_cost_bps) )

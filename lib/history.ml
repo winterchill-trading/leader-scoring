@@ -38,11 +38,14 @@ let normalize t =
   in
   { t with
     fills
-  ; funding = List.stable_sort t.funding ~compare:(by_time (fun (f : Funding.t) -> f.time))
+  ; funding =
+      List.stable_sort t.funding ~compare:(by_time (fun (f : Funding.t) -> f.time))
   ; snapshots =
       List.stable_sort t.snapshots ~compare:(by_time (fun (s : Snapshot.t) -> s.time))
   ; equity_curve =
-      List.stable_sort t.equity_curve ~compare:(by_time (fun (p : Equity_point.t) -> p.time))
+      List.stable_sort
+        t.equity_curve
+        ~compare:(by_time (fun (p : Equity_point.t) -> p.time))
   }
 ;;
 
@@ -65,7 +68,10 @@ let span t =
       ; List.map t.equity_curve ~f:(fun p -> p.time)
       ]
   in
-  match List.min_elt times ~compare:Time_ns.compare, List.max_elt times ~compare:Time_ns.compare with
+  match
+    ( List.min_elt times ~compare:Time_ns.compare
+    , List.max_elt times ~compare:Time_ns.compare )
+  with
   | Some lo, Some hi -> Some (lo, hi)
   | _ -> None
 ;;

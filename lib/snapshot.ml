@@ -43,11 +43,8 @@ type t = Stable.V1.t =
 [@@deriving bin_io, sexp, compare, equal]
 
 let gross_notional t =
-  List.sum
-    (module Float)
-    t.positions
-    ~f:(fun (p : Position.t) ->
-      match p.mark_px with
-      | Some m -> Float.abs p.size *. m
-      | None -> 0.)
+  List.sum (module Float) t.positions ~f:(fun (p : Position.t) ->
+    match p.mark_px with
+    | Some m -> Float.abs p.size *. m
+    | None -> 0.)
 ;;

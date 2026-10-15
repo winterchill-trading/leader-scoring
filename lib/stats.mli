@@ -1,5 +1,5 @@
-(** Small statistics helpers over float arrays. NaN inputs are the caller's problem:
-    every function here assumes finite values. *)
+(** Small statistics helpers over float arrays. NaN inputs are the caller's problem: every
+    function here assumes finite values. *)
 
 open! Core
 
@@ -9,7 +9,7 @@ val mean : float array -> float option
 val stdev : float array -> float option
 
 (** [quantile xs q] with linear interpolation between order statistics (numpy's default
-    method); [q] in [\[0, 1\]]. *)
+    method); [q] in [[0, 1]]. *)
 val quantile : float array -> float -> float option
 
 (** Quantile of values carrying weights (durations): the smallest value whose cumulative

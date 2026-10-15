@@ -48,7 +48,9 @@ let leader ~seed ~start ~(market : float array array) ~account (p : Profile.t) =
   let rs = Random.State.make [| seed; 29 |] in
   let days = Array.length market.(0) - 1 in
   let n_coins = Int.min p.coins (Array.length market) in
-  let at day hour = Time_ns.add start (Time_ns.Span.of_hr ((24. *. Float.of_int day) +. hour)) in
+  let at day hour =
+    Time_ns.add start (Time_ns.Span.of_hr ((24. *. Float.of_int day) +. hour))
+  in
   let fills = Queue.create () in
   let snapshots = Queue.create () in
   let id = ref 0 in
@@ -102,9 +104,7 @@ let leader ~seed ~start ~(market : float array array) ~account (p : Profile.t) =
     (* close what is due *)
     let due, rest = List.partition_tf !open_trades ~f:(fun t -> t.close_day <= day) in
     List.iter due ~f:(fun t ->
-      let won =
-        Float.( > ) (t.size *. (market.(t.coin).(day) -. entry.(t.coin))) 0.
-      in
+      let won = Float.( > ) (t.size *. (market.(t.coin).(day) -. entry.(t.coin))) 0. in
       trade ~coin:t.coin ~day ~hour:(Random.State.float rs 8.) ~qty:(-.t.size);
       streak := if won then 0 else !streak + 1);
     open_trades := rest;
@@ -117,13 +117,18 @@ let leader ~seed ~start ~(market : float array array) ~account (p : Profile.t) =
         if (not busy) && Float.( < ) (Random.State.float rs 1.) chance
         then (
           let hold =
-            Int.max 1 (Float.iround_nearest_exn (p.hold_days *. -.Float.log (Float.max 1e-9 (Random.State.float rs 1.))))
+            Int.max
+              1
+              (Float.iround_nearest_exn
+                 (p.hold_days *. -.Float.log (Float.max 1e-9 (Random.State.float rs 1.))))
           in
           let close_day = Int.min days (day + hold) in
           let move = market.(c).(close_day) -. market.(c).(day) in
           let right = if Float.( >= ) move 0. then 1. else -1. in
           let side =
-            if Float.( < ) (Random.State.float rs 1.) (0.5 +. skill) then right else -.right
+            if Float.( < ) (Random.State.float rs 1.) (0.5 +. skill)
+            then right
+            else -.right
           in
           let side =
             if Float.( < ) (Random.State.float rs 1.) (Float.abs p.long_bias *. 0.5)
@@ -186,5 +191,11 @@ let universe ~seed ~start ~leaders ~days =
   let rs = Random.State.make [| seed; 41 |] in
   List.init leaders ~f:(fun i ->
     let p = profile rs in
-    leader ~seed:((seed * 100_003) + i) ~start ~market ~account:(sprintf "synthetic-%04d" i) p, p)
+    ( leader
+        ~seed:((seed * 100_003) + i)
+        ~start
+        ~market
+        ~account:(sprintf "synthetic-%04d" i)
+        p
+    , p ))
 ;;

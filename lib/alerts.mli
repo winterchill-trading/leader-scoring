@@ -14,8 +14,8 @@
       baseline's or more, or that much less.
     - {b Liquidation}: a liquidation fill in the recent window (critical).
 
-    {!scan} replays {!detect} along the record and keeps the moments an alert turns on,
-    so a page can show when the leader changed. *)
+    {!scan} replays {!detect} along the record and keeps the moments an alert turns on, so
+    a page can show when the leader changed. *)
 
 open! Core
 
@@ -66,9 +66,9 @@ module Config : sig
     }
   [@@deriving sexp]
 
-  (** 7 recent days against the 30 before; 25% drawdown or 1.5x the baseline's;
-      leverage of 3x and 2x the baseline p95; a bias move of 1 (neutral to fully one
-      side); trade frequency 3x either way. *)
+  (** 7 recent days against the 30 before; 25% drawdown or 1.5x the baseline's; leverage
+      of 3x and 2x the baseline p95; a bias move of 1 (neutral to fully one side); trade
+      frequency 3x either way. *)
   val default : t
 
   (** {!default} with the windows set to a sixth and a half of [span], for short records

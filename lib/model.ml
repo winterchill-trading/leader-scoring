@@ -46,7 +46,8 @@ let of_json json =
       |> Array.of_list_map ~f:(fun tj ->
         { feature = ints (U.member "feature" tj)
         ; threshold = floats (U.member "threshold" tj)
-        ; missing_left = ints (U.member "missing_left" tj) |> Array.map ~f:(fun i -> i <> 0)
+        ; missing_left =
+            ints (U.member "missing_left" tj) |> Array.map ~f:(fun i -> i <> 0)
         ; left = ints (U.member "left" tj)
         ; right = ints (U.member "right" tj)
         ; value = floats (U.member "value" tj)
@@ -76,7 +77,9 @@ let leaf tree (x : float array) =
     else (
       let v = x.(f) in
       let go_left =
-        if Float.is_nan v then tree.missing_left.(i) else Float.( <= ) v tree.threshold.(i)
+        if Float.is_nan v
+        then tree.missing_left.(i)
+        else Float.( <= ) v tree.threshold.(i)
       in
       go (if go_left then tree.left.(i) else tree.right.(i)))
   in
@@ -92,5 +95,4 @@ let predict t x =
 ;;
 
 let predict_metrics t m = predict t (Dataset.features m)
-
 let bundled = lazy (Yojson.Safe.from_string Model_data.json |> of_json |> Or_error.ok_exn)

@@ -253,7 +253,8 @@ let build ?initial_equity ?until (history : History.t) =
     b.trade <- Some (Open_trade.create ~coin ~size ~px ~at ~seeded)
   in
   let close_trade (b : Book.t) ~at =
-    Option.iter b.trade ~f:(fun o -> closed := Open_trade.finish o ~closed_at:(Some at) :: !closed);
+    Option.iter b.trade ~f:(fun o ->
+      closed := Open_trade.finish o ~closed_at:(Some at) :: !closed);
     b.trade <- None
   in
   (* Apply a signed quantity [q] at [px]; returns the realized price pnl. [fee] is split
@@ -288,7 +289,9 @@ let build ?initial_equity ?until (history : History.t) =
       let closing = Float.min (Float.abs q) (Float.abs b.pos) in
       let pnl = closing * (px - b.entry) * if b.pos > 0. then 1. else -1. in
       realized := !realized + pnl;
-      let close_fee = if Float.( > ) (Float.abs q) 0. then fee * closing / Float.abs q else 0. in
+      let close_fee =
+        if Float.( > ) (Float.abs q) 0. then fee * closing / Float.abs q else 0.
+      in
       Option.iter b.trade ~f:(fun o ->
         o.realized <- o.realized + pnl;
         o.exit_qty <- o.exit_qty + closing;
@@ -337,7 +340,14 @@ let build ?initial_equity ?until (history : History.t) =
     turnover := !turnover +. Fill.notional f;
     Hashtbl.update notional f.coin ~f:(fun v ->
       Option.value v ~default:0. +. Fill.notional f);
-    apply b ~coin:f.coin ~q:f.sz ~px:f.px ~fee:f.fee ~at:f.time ~seeded:false
+    apply
+      b
+      ~coin:f.coin
+      ~q:f.sz
+      ~px:f.px
+      ~fee:f.fee
+      ~at:f.time
+      ~seeded:false
       ~liquidation:f.liquidation
   in
   let on_funding (f : Funding.t) =
@@ -347,8 +357,10 @@ let build ?initial_equity ?until (history : History.t) =
   in
   let anchor = ref None in
   let pnl () =
-    Hashtbl.fold books ~init:(!realized -. !fees +. !funding) ~f:(fun ~key:_ ~data:(b : Book.t) acc ->
-      acc +. (b.pos *. (b.mark -. b.entry)))
+    Hashtbl.fold
+      books
+      ~init:(!realized -. !fees +. !funding)
+      ~f:(fun ~key:_ ~data:(b : Book.t) acc -> acc +. (b.pos *. (b.mark -. b.entry)))
   in
   let on_snapshot (s : Snapshot.t) =
     List.iter s.positions ~f:(fun (p : Snapshot.Position.t) ->
@@ -358,7 +370,15 @@ let build ?initial_equity ?until (history : History.t) =
       then (
         let px = Option.first_some p.entry_px p.mark_px |> Option.value ~default:b.mark in
         if Float.( = ) b.mark 0. then b.mark <- px;
-        apply b ~coin:p.coin ~q:p.size ~px ~fee:0. ~at:s.time ~seeded:true ~liquidation:false)
+        apply
+          b
+          ~coin:p.coin
+          ~q:p.size
+          ~px
+          ~fee:0.
+          ~at:s.time
+          ~seeded:true
+          ~liquidation:false)
       else if b.seen && mismatch ~expected:p.size ~actual:b.pos
       then incr mismatches;
       b.seen <- true);
@@ -380,19 +400,21 @@ let build ?initial_equity ?until (history : History.t) =
     |> List.min_elt ~compare:Time_ns.compare
     |> Option.value ~default:h.fetched_at
   in
-  (* Positions held when the history starts: a coin's first fill says what was held
-     before it, and a coin in the latest snapshot with no fill at all was held for the
-     whole period (marked at the snapshot's price throughout). *)
+  (* Positions held when the history starts: a coin's first fill says what was held before
+     it, and a coin in the latest snapshot with no fill at all was held for the whole
+     period (marked at the snapshot's price throughout). *)
   let seeds =
     let first_fill = String.Table.create () in
     List.iter h.fills ~f:(fun f ->
-      if not (Hashtbl.mem first_fill f.coin) then Hashtbl.set first_fill ~key:f.coin ~data:f);
+      if not (Hashtbl.mem first_fill f.coin)
+      then Hashtbl.set first_fill ~key:f.coin ~data:f);
     let from_fills =
       Hashtbl.data first_fill
       |> List.filter_map ~f:(fun (f : Fill.t) ->
         match f.position_before with
         | Some p when not (is_flat p) ->
-          Some (Event.Seed { time = start; coin = f.coin; size = p; px = f.px; mark = f.px })
+          Some
+            (Event.Seed { time = start; coin = f.coin; size = p; px = f.px; mark = f.px })
         | _ -> None)
     in
     let from_snapshot =
@@ -471,9 +493,9 @@ let build ?initial_equity ?until (history : History.t) =
       { Point.time; equity = e0 +. pnl; gross; net; open_positions })
   in
   let equity_source, equity, initial =
-    (* A coarse venue curve (hl-sim samples a few points per run) says less than the
-       curve rebuilt from fills and anchored on a snapshot; prefer the venue's only when
-       it has some resolution or nothing else is anchored. *)
+    (* A coarse venue curve (hl-sim samples a few points per run) says less than the curve
+       rebuilt from fills and anchored on a snapshot; prefer the venue's only when it has
+       some resolution or nothing else is anchored. *)
     let venue_points = List.length h.equity_curve in
     if venue_points >= 10
        || (venue_points >= 2 && Option.is_none !anchor && Option.is_none initial_equity)
@@ -553,9 +575,7 @@ let bars t ~period =
   then [||]
   else (
     let span = Time_ns.diff t.until t.from in
-    let n =
-      Float.iround_up_exn (Time_ns.Span.( // ) span period) |> Int.max 1
-    in
+    let n = Float.iround_up_exn (Time_ns.Span.( // ) span period) |> Int.max 1 in
     Array.init (n + 1) ~f:(fun k ->
       let at = Time_ns.add t.from (Time_ns.Span.scale_int period k) in
       t.equity.(index_at t.equity at).equity))
@@ -585,7 +605,9 @@ let window t ~from ~until =
       Array.fold t.points ~init:None ~f:(fun acc (p : Point.t) ->
         if Time_ns.( <= ) p.time from then Some p else acc)
     in
-    let rest = Array.filter t.points ~f:(fun p -> Time_ns.( > ) p.time from && inside p.time) in
+    let rest =
+      Array.filter t.points ~f:(fun p -> Time_ns.( > ) p.time from && inside p.time)
+    in
     match before with
     | Some p -> Array.append [| { p with time = from } |] rest
     | None -> rest

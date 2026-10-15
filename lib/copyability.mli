@@ -2,17 +2,17 @@
 
     Each leader order (its fills of one coin, one millisecond and one side, summed) is
     scaled to a follower with equity [X]: [n_f = n_l * X / E_l(t)], [E_l(t)] the leader's
-    equity then. The follower's order walks the coin's order book from the best level;
-    its cost is the average fill price against the mid, in basis points
-    ([(avg - mid) / mid * 10^4] for a buy, the mirror for a sell), so it includes half
-    the spread. What the book cannot fill is charged [unfilled_penalty_bps]. A leader's
-    cost at [X] is the notional-weighted mean over its orders; the capacity is the
-    largest [X] whose cost stays at or below [max_cost_bps] (cost only grows with [X],
-    so a bisection on [log X] finds it).
+    equity then. The follower's order walks the coin's order book from the best level; its
+    cost is the average fill price against the mid, in basis points
+    ([(avg - mid) / mid * 10^4] for a buy, the mirror for a sell), so it includes half the
+    spread. What the book cannot fill is charged [unfilled_penalty_bps]. A leader's cost
+    at [X] is the notional-weighted mean over its orders; the capacity is the largest [X]
+    whose cost stays at or below [max_cost_bps] (cost only grows with [X], so a bisection
+    on [log X] finds it).
 
-    The books are snapshots taken when the estimate runs (from [market-data] L2 books or
-    a venue's [l2Book]), applied to past orders: a thin moment at snapshot time makes
-    every past order look expensive. Fees are not included. *)
+    The books are snapshots taken when the estimate runs (from [market-data] L2 books or a
+    venue's [l2Book]), applied to past orders: a thin moment at snapshot time makes every
+    past order look expensive. Fees are not included. *)
 
 open! Core
 
@@ -44,8 +44,8 @@ module Estimate : sig
     { notional : float (** asked for *)
     ; filled : float (** notional the book could fill *)
     ; cost_bps : float
-    (** filled part against the mid, plus the penalty on the unfilled part, over the
-        whole notional *)
+    (** filled part against the mid, plus the penalty on the unfilled part, over the whole
+        notional *)
     }
   [@@deriving sexp_of]
 end
@@ -85,8 +85,8 @@ end
 type t =
   { curve : Point.t list (** one per [follower_equities] *)
   ; capacity : float option
-  (** largest follower equity costing at most [max_cost_bps]; [None] when no order has
-      a book; [Some 0.] when even 1 USD costs more (a wide spread) *)
+  (** largest follower equity costing at most [max_cost_bps]; [None] when no order has a
+      book; [Some 0.] when even 1 USD costs more (a wide spread) *)
   ; orders : int (** leader orders in the record *)
   ; coins_without_book : string list
   }

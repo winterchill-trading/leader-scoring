@@ -20,7 +20,9 @@ let label (tr : Track_record.t) ~from ~until =
   then None
   else (
     let n = Array.length bars in
-    let r = Array.init (Int.max 0 (n - 1)) ~f:(fun i -> (bars.(i + 1) /. bars.(i)) -. 1.) in
+    let r =
+      Array.init (Int.max 0 (n - 1)) ~f:(fun i -> (bars.(i + 1) /. bars.(i)) -. 1.)
+    in
     if Array.length r < 10
     then None
     else (
@@ -39,14 +41,21 @@ module Row = struct
     ; label : float option
     }
 
-  let csv_header = String.concat ~sep:"," ([ "group"; "account"; "cutoff_ms" ] @ feature_names @ [ "label" ])
+  let csv_header =
+    String.concat
+      ~sep:","
+      ([ "group"; "account"; "cutoff_ms" ] @ feature_names @ [ "label" ])
+  ;;
 
   let num x = if Float.is_nan x then "" else sprintf "%.17g" x
 
   let to_csv t =
     String.concat
       ~sep:","
-      ([ t.group; t.account; Int.to_string (Time_ns.to_int_ns_since_epoch t.cutoff / 1_000_000) ]
+      ([ t.group
+       ; t.account
+       ; Int.to_string (Time_ns.to_int_ns_since_epoch t.cutoff / 1_000_000)
+       ]
        @ Array.to_list (Array.map t.features ~f:num)
        @ [ Option.value_map t.label ~default:"" ~f:num ])
   ;;

@@ -68,7 +68,9 @@ let rank (config : Config.t) universe =
   let weights = List.filter config.weights ~f:(fun (_, w) -> Float.( > ) w 0.) in
   let total_weight = List.sum (module Float) weights ~f:snd in
   let eligibility (m : Metrics.t) days =
-    let trades = Metrics.get m Trades |> Option.value ~default:0. |> Float.iround_nearest_exn in
+    let trades =
+      Metrics.get m Trades |> Option.value ~default:0. |> Float.iround_nearest_exn
+    in
     List.filter_opt
       [ Option.some_if
           (trades < config.min_trades)
@@ -90,7 +92,8 @@ let rank (config : Config.t) universe =
   in
   let pool_values =
     List.map weights ~f:(fun (metric, _) ->
-      metric, List.filter_map pool ~f:(fun (_, m, _) -> Metrics.get m metric) |> Array.of_list)
+      ( metric
+      , List.filter_map pool ~f:(fun (_, m, _) -> Metrics.get m metric) |> Array.of_list ))
   in
   let scored =
     List.map entries ~f:(fun (account, metrics, reasons) ->
@@ -102,7 +105,9 @@ let rank (config : Config.t) universe =
             | None -> 0.5
             | Some v ->
               (* a non-eligible leader is placed among the pool as if it were one more *)
-              let xs = if Array.mem xs v ~equal:Float.equal then xs else Array.append xs [| v |] in
+              let xs =
+                if Array.mem xs v ~equal:Float.equal then xs else Array.append xs [| v |]
+              in
               let p = percentile_of xs v in
               (match Metric.better metric with
                | Lower -> 1. -. p
@@ -122,7 +127,9 @@ let rank (config : Config.t) universe =
   let by_score l =
     List.stable_sort l ~compare:(fun (_, a, _, _) (_, b, _, _) -> Float.compare b a)
   in
-  let eligible, rest = List.partition_tf scored ~f:(fun (_, _, r, _) -> List.is_empty r) in
+  let eligible, rest =
+    List.partition_tf scored ~f:(fun (_, _, r, _) -> List.is_empty r)
+  in
   let eligible = by_score eligible in
   let scores = List.map eligible ~f:(fun (_, s, _, _) -> s) |> Array.of_list in
   let n = Array.length scores in

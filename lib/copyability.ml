@@ -86,7 +86,9 @@ module Depth = struct
       and hi = ref (n - 1) in
       while !lo < !hi do
         let mid = (!lo + !hi) / 2 in
-        if Float.( >= ) t.cum_notional.(mid + 1) notional then hi := mid else lo := mid + 1
+        if Float.( >= ) t.cum_notional.(mid + 1) notional
+        then hi := mid
+        else lo := mid + 1
       done;
       let k = !lo in
       let rest = notional -. t.cum_notional.(k) in
@@ -180,7 +182,8 @@ let leader_orders (tr : Track_record.t) =
     let ms = Time_ns.to_int_ns_since_epoch f.time / 1_000_000 in
     let key = ms, f.coin, Float.( > ) f.sz 0. in
     match Hashtbl.find groups key with
-    | Some (time, signed) -> Hashtbl.set groups ~key ~data:(time, signed +. (Float.copysign f.notional f.sz))
+    | Some (time, signed) ->
+      Hashtbl.set groups ~key ~data:(time, signed +. Float.copysign f.notional f.sz)
     | None ->
       Queue.enqueue order key;
       Hashtbl.set groups ~key ~data:(f.time, Float.copysign f.notional f.sz));
@@ -203,11 +206,15 @@ let prepare ~books tr =
 
 let costs ~unfilled_penalty_bps orders ~follower_equity =
   Array.map orders ~f:(fun (book, side, per_dollar) ->
-    Prepared.walk ~unfilled_penalty_bps book ~side ~notional:(per_dollar *. follower_equity))
+    Prepared.walk
+      ~unfilled_penalty_bps
+      book
+      ~side
+      ~notional:(per_dollar *. follower_equity))
 ;;
 
-(* The notional-weighted mean cost without building an estimate per order: the
-   capacity bisection calls this about 45 times. *)
+(* The notional-weighted mean cost without building an estimate per order: the capacity
+   bisection calls this about 45 times. *)
 let mean_cost ~unfilled_penalty_bps orders ~follower_equity =
   let mutable total = 0. in
   let mutable weighted = 0. in
@@ -239,7 +246,9 @@ let mean_cost ~unfilled_penalty_bps orders ~follower_equity =
 let weighted_mean (estimates : Estimate.t array) =
   let total = Array.sum (module Float) estimates ~f:(fun e -> e.notional) in
   if Float.( > ) total 0.
-  then Some (Array.sum (module Float) estimates ~f:(fun e -> e.cost_bps *. e.notional) /. total)
+  then
+    Some
+      (Array.sum (module Float) estimates ~f:(fun e -> e.cost_bps *. e.notional) /. total)
   else None
 ;;
 
@@ -265,13 +274,16 @@ let estimate ?(config = Config.default) ~books (tr : Track_record.t) =
   in
   let cost x = mean_cost ~unfilled_penalty_bps orders ~follower_equity:x in
   let capacity =
-    (* bisection on log10 equity between 1 USD and 10^10 USD; 40 steps is far below a
-       cent of resolution at any size *)
+    (* bisection on log10 equity between 1 USD and 10^10 USD; 40 steps is far below a cent
+       of resolution at any size *)
     match cost 1. with
     | None -> None
     | Some c when Float.( > ) c config.max_cost_bps -> Some 0.
     | Some _ ->
-      let ok x = Option.value_map (cost x) ~default:false ~f:(fun c -> Float.( <= ) c config.max_cost_bps) in
+      let ok x =
+        Option.value_map (cost x) ~default:false ~f:(fun c ->
+          Float.( <= ) c config.max_cost_bps)
+      in
       if ok 1e10
       then Some 1e10
       else (
@@ -286,7 +298,8 @@ let estimate ?(config = Config.default) ~books (tr : Track_record.t) =
   let all_orders = leader_orders tr in
   let coins_without_book =
     Array.to_list all_orders
-    |> List.filter_map ~f:(fun (_, coin, _) -> Option.some_if (not (Map.mem books coin)) coin)
+    |> List.filter_map ~f:(fun (_, coin, _) ->
+      Option.some_if (not (Map.mem books coin)) coin)
     |> List.dedup_and_sort ~compare:String.compare
   in
   { curve = List.map config.follower_equities ~f:point

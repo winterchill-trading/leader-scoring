@@ -46,9 +46,11 @@ let returns_of_bars bars =
   if n < 2
   then [||]
   else
-    Array.filter_mapi (Array.sub bars ~pos:1 ~len:(n - 1)) ~f:(fun i e ->
-      let prev = bars.(i) in
-      if Float.( > ) prev 0. then Some ((e /. prev) -. 1.) else None)
+    Array.filter_mapi
+      (Array.sub bars ~pos:1 ~len:(n - 1))
+      ~f:(fun i e ->
+        let prev = bars.(i) in
+        if Float.( > ) prev 0. then Some ((e /. prev) -. 1.) else None)
 ;;
 
 (* Drawdown over the equity points: (max drawdown, longest duration, current). *)
@@ -84,7 +86,10 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
   let r = returns_of_bars bars in
   let ppy = Time_ns.Span.( // ) year bar in
   let values = Metric.Table.create () in
-  let set m v = Option.iter v ~f:(fun v -> if Float.is_finite v then Hashtbl.set values ~key:m ~data:v) in
+  let set m v =
+    Option.iter v ~f:(fun v ->
+      if Float.is_finite v then Hashtbl.set values ~key:m ~data:v)
+  in
   (* returns and risk *)
   let e0 = if Array.is_empty bars then None else Some bars.(0) in
   let en = if Array.is_empty bars then None else Some bars.(Array.length bars - 1) in
@@ -139,16 +144,19 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
   if Array.length bars > w
   then (
     let windows =
-      Array.init (Array.length bars - w) ~f:(fun i ->
-        let a = bars.(i)
-        and b = bars.(i + w) in
-        if Float.( > ) a 0. then Some ((b /. a) -. 1.) else None)
+      Array.init
+        (Array.length bars - w)
+        ~f:(fun i ->
+          let a = bars.(i)
+          and b = bars.(i + w) in
+          if Float.( > ) a 0. then Some ((b /. a) -. 1.) else None)
       |> Array.filter_opt
     in
     if not (Array.is_empty windows)
     then (
       let positive = Array.count windows ~f:(fun x -> Float.( > ) x 0.) in
-      set Rolling_positive_share
+      set
+        Rolling_positive_share
         (Some (Float.of_int positive /. Float.of_int (Array.length windows)));
       set Rolling_worst_return (Array.min_elt windows ~compare:Float.compare)));
   (* trades *)
@@ -169,10 +177,8 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
     set
       Avg_hold_hours
       (Some
-         (List.sum
-            (module Float)
-            closed
-            ~f:(fun t -> Time_ns.Span.to_hr (Track_record.Trade.hold t ~until:tr.until))
+         (List.sum (module Float) closed ~f:(fun t ->
+            Time_ns.Span.to_hr (Track_record.Trade.hold t ~until:tr.until))
           /. Float.of_int n_closed)));
   let sum = List.sum (module Float) ~f:Fn.id in
   set Profit_factor (ratio (sum wins) (Float.abs (sum losses)));
@@ -182,7 +188,8 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
      set Payoff_ratio (ratio (avg wins) (Float.abs (avg losses)))
    | _ -> ());
   let opened =
-    List.count tr.trades ~f:(fun t -> Time_ns.between t.opened_at ~low:tr.from ~high:tr.until)
+    List.count tr.trades ~f:(fun t ->
+      Time_ns.between t.opened_at ~low:tr.from ~high:tr.until)
   in
   if Float.( > ) span_days 0.
   then set Trades_per_day (Some (Float.of_int opened /. span_days));
@@ -226,8 +233,14 @@ let compute ?(config = Config.default) (tr : Track_record.t) =
    | _ -> ());
   let flips =
     Array.fold tr.points ~init:(0, 0) ~f:(fun (flips, last) (p : Track_record.Point.t) ->
-      let s = if Float.( > ) p.net 0. then 1 else if Float.( < ) p.net 0. then -1 else 0 in
-      if s = 0 then flips, last else if last <> 0 && s <> last then flips + 1, s else flips, s)
+      let s =
+        if Float.( > ) p.net 0. then 1 else if Float.( < ) p.net 0. then -1 else 0
+      in
+      if s = 0
+      then flips, last
+      else if last <> 0 && s <> last
+      then flips + 1, s
+      else flips, s)
     |> fst
   in
   if Float.( > ) span_days 0.
@@ -278,7 +291,9 @@ let to_json t =
 
 let of_alist ?(returns = [||]) ~bar alist =
   let given = Metric.Map.of_alist_reduce alist ~f:(fun _ b -> b) in
-  { values = List.map Metric.all ~f:(fun m -> m, Option.join (Map.find given m)) |> Metric.Map.of_alist_exn
+  { values =
+      List.map Metric.all ~f:(fun m -> m, Option.join (Map.find given m))
+      |> Metric.Map.of_alist_exn
   ; bar
   ; returns
   }
@@ -297,5 +312,6 @@ let of_json ~bar = function
                 | `Int x -> Some (Float.of_int x)
                 | `Intlit s -> Float.of_string_opt s
                 | _ -> None )))))
-  | json -> Or_error.errorf "metrics: expected an object, got %s" (Yojson.Safe.to_string json)
+  | json ->
+    Or_error.errorf "metrics: expected an object, got %s" (Yojson.Safe.to_string json)
 ;;

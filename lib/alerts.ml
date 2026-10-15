@@ -93,9 +93,7 @@ let detect (c : Config.t) (tr : Track_record.t) ~now =
   in
   let config bars =
     (* both windows on the same bar, chosen for the baseline's length *)
-    { Metrics.Config.default with
-      bar = Some (Metrics.auto_bar ~span:bars)
-    }
+    { Metrics.Config.default with bar = Some (Metrics.auto_bar ~span:bars) }
   in
   let mc = config c.baseline in
   let rm = Metrics.compute ~config:mc recent
@@ -113,7 +111,9 @@ let detect (c : Config.t) (tr : Track_record.t) ~now =
       let base_mdd = get bm Max_drawdown |> Option.value ~default:0. in
       let relative = c.drawdown_vs_baseline *. base_mdd in
       let threshold =
-        if Float.( > ) base_mdd 0. then Float.min c.drawdown_limit relative else c.drawdown_limit
+        if Float.( > ) base_mdd 0.
+        then Float.min c.drawdown_limit relative
+        else c.drawdown_limit
       in
       if Float.( >= ) dd threshold && Float.( > ) dd 0.
       then
@@ -183,7 +183,8 @@ let detect (c : Config.t) (tr : Track_record.t) ~now =
     match get rm Trades_per_day, get bm Trades_per_day with
     | Some r, Some b when Float.( > ) b 0. && Float.( > ) r 0. ->
       let ratio = r /. b in
-      if Float.( >= ) ratio c.frequency_ratio || Float.( <= ) ratio (1. /. c.frequency_ratio)
+      if Float.( >= ) ratio c.frequency_ratio
+         || Float.( <= ) ratio (1. /. c.frequency_ratio)
       then
         Some
           (alert

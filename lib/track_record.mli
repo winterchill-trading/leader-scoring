@@ -1,13 +1,13 @@
 (** A leader's track record: round-trip trades and an equity curve with exposure, rebuilt
     from a {!History.t}.
 
-    {b Positions.} Fills are replayed per coin on average-entry books. Positions held
-    when the history starts are seeded at its first instant: a coin whose first fill
-    reports a non-zero [position_before] at that fill's price, and a coin in the latest
-    snapshot with no fill at all at the snapshot's entry price, marked at the snapshot's
-    price throughout. The real entries are older than the history; such trades say
-    [seeded]. A later fill whose [position_before] disagrees with the replay repairs the
-    position at its price and counts as a mismatch.
+    {b Positions.} Fills are replayed per coin on average-entry books. Positions held when
+    the history starts are seeded at its first instant: a coin whose first fill reports a
+    non-zero [position_before] at that fill's price, and a coin in the latest snapshot
+    with no fill at all at the snapshot's entry price, marked at the snapshot's price
+    throughout. The real entries are older than the history; such trades say [seeded]. A
+    later fill whose [position_before] disagrees with the replay repairs the position at
+    its price and counts as a mismatch.
 
     {b Trades.} A trade opens when a coin's position leaves zero and closes when it
     returns to zero; a fill that flips the position closes one trade and opens the next,
@@ -16,13 +16,13 @@
 
     {b Equity.} [pnl(t) = realized - fees + funding + sum(position * (mark - entry))],
     with each coin marked at its latest fill price or snapshot mark. The curve is
-    [E0 + pnl(t)], where [E0] makes the curve equal the latest snapshot's account value
-    at its time ([Anchored]); without a snapshot, [E0] is [?initial_equity] when given
-    ([Given]) and otherwise the peak gross notional, as if the leader never used more
-    than 1x ([Assumed]; returns are then only indicative). When the history carries a
-    venue curve of at least ten points (or two, when nothing anchors the rebuilt one),
-    that curve is the equity series ([Venue]) and the rebuilt one is used for exposure
-    only. Deposits and withdrawals never move either curve. *)
+    [E0 + pnl(t)], where [E0] makes the curve equal the latest snapshot's account value at
+    its time ([Anchored]); without a snapshot, [E0] is [?initial_equity] when given
+    ([Given]) and otherwise the peak gross notional, as if the leader never used more than
+    1x ([Assumed]; returns are then only indicative). When the history carries a venue
+    curve of at least ten points (or two, when nothing anchors the rebuilt one), that
+    curve is the equity series ([Venue]) and the rebuilt one is used for exposure only.
+    Deposits and withdrawals never move either curve. *)
 
 open! Core
 
@@ -133,7 +133,8 @@ type t =
   ; turnover : float (** sum of fill notionals *)
   ; fees : float
   ; funding : float
-  ; notional_by_coin : (string * float) list (** traded notional per coin, largest first *)
+  ; notional_by_coin : (string * float) list
+  (** traded notional per coin, largest first *)
   ; position_mismatches : int
   (** snapshot positions that disagreed with the replayed fills by more than 0.1% *)
   ; fill_log : Fill_entry.t array (** every fill, by time, for windowed figures *)
@@ -153,11 +154,11 @@ val equity_at : t -> Time_ns.t -> float option
     [until]), each the latest equity point at or before the bar end. *)
 val bars : t -> period:Time_ns.Span.t -> float array
 
-(** Leverage samples [(duration, gross / equity)] between consecutive points, the last
-    one held until [until]; durations sum to the covered time. *)
+(** Leverage samples [(duration, gross / equity)] between consecutive points, the last one
+    held until [until]; durations sum to the covered time. *)
 val leverage_samples : t -> (Time_ns.Span.t * float) array
 
-(** The record cut to [\[from, until\]]: equity and exposure series start with a point at
+(** The record cut to [[from, until]]: equity and exposure series start with a point at
     [from] holding the state then; trades are those open at some time inside the window
     (closed ones keep their whole pnl); fills and funding inside the window give
     [turnover], [fees], [funding] and [notional_by_coin]. [initial_equity] becomes the

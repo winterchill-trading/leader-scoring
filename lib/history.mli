@@ -16,8 +16,8 @@ module Stable : sig
       ; equity_curve : Equity_point.Stable.V1.t list
       (** the venue's deposit-free curve; empty when it has none *)
       ; fills_truncated : bool
-      (** the venue keeps only recent fills and the oldest one returned is later than
-          the period asked for *)
+      (** the venue keeps only recent fills and the oldest one returned is later than the
+          period asked for *)
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
@@ -39,7 +39,7 @@ type t = Stable.V1.t =
     same [(id, time, coin)], as overlapping pages return them. *)
 val normalize : t -> t
 
-(** Keeps what happened in [\[from, until\]]; snapshots and curve points too. *)
+(** Keeps what happened in [[from, until]]; snapshots and curve points too. *)
 val restrict : t -> from:Time_ns.t -> until:Time_ns.t -> t
 
 (** Earliest and latest time over fills, funding, snapshots and the curve. *)
