@@ -57,7 +57,8 @@ let info t body =
   | Ok { status; body } when status >= 200 && status < 300 -> Ok body
   | Ok { status; body } ->
     Or_error.error_s
-      [%message "info request failed" (status : int) ~body:(String.prefix body 200 : string)]
+      [%message
+        "info request failed" (status : int) ~body:(String.prefix body 200 : string)]
 ;;
 
 let ms time = Time_ns.to_int_ns_since_epoch time / 1_000_000
@@ -146,5 +147,6 @@ let fetch t ~account ~from ~until =
   let%map raw = fetch_raw t ~account ~from ~until in
   Or_error.bind raw ~f:(fun raw ->
     Raw.to_history ~portfolio_window:t.portfolio_window ~include_spot:t.include_spot raw
-    |> Or_error.map ~f:(fun h -> History.restrict h ~from ~until:(Time_ns.max until raw.meta.fetched_at)))
+    |> Or_error.map ~f:(fun h ->
+      History.restrict h ~from ~until:(Time_ns.max until raw.meta.fetched_at)))
 ;;

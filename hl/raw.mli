@@ -34,10 +34,10 @@ type t =
 val save : t -> dir:string -> unit Deferred.t
 val load : dir:string -> t Or_error.t Deferred.t
 
-(** Decodes every part into a {!Leader_scoring.History.t}. The portfolio's [window]
-    curve (default ["month"]) becomes the equity curve. [fills_truncated] is set when the
-    walk was capped, or when at least 2000 fills start later than a tenth of the way into
-    the period (the venue keeps only an account's most recent fills). *)
+(** Decodes every part into a {!Leader_scoring.History.t}. The portfolio's [window] curve
+    (default ["month"]) becomes the equity curve. [fills_truncated] is set when the walk
+    was capped, or when at least 2000 fills start later than a tenth of the way into the
+    period (the venue keeps only an account's most recent fills). *)
 val to_history
   :  ?portfolio_window:string
   -> ?include_spot:bool

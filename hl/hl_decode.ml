@@ -3,10 +3,13 @@ open Leader_scoring
 module U = Yojson.Safe.Util
 
 let time_of_ms ms = Time_ns.of_int_ns_since_epoch (ms * 1_000_000)
+
 (* Spot pairs are "@<index>" or "BASE/QUOTE"; "#<id>" instruments are not perpetuals
    either (they never appear in clearinghouseState). *)
 let is_spot coin =
-  String.is_prefix coin ~prefix:"@" || String.is_prefix coin ~prefix:"#" || String.mem coin '/'
+  String.is_prefix coin ~prefix:"@"
+  || String.is_prefix coin ~prefix:"#"
+  || String.mem coin '/'
 ;;
 
 let num = function
@@ -81,9 +84,7 @@ let funding json =
 
 let snapshot ~time json =
   decode "clearinghouseState" (fun () ->
-    let account_value =
-      U.member "marginSummary" json |> U.member "accountValue" |> num
-    in
+    let account_value = U.member "marginSummary" json |> U.member "accountValue" |> num in
     let time =
       match U.member "time" json with
       | `Null -> time
@@ -144,7 +145,9 @@ let open_interest json =
     match json with
     | `List [ meta; ctxs ] ->
       let names =
-        U.member "universe" meta |> U.to_list |> List.map ~f:(fun a -> U.member "name" a |> U.to_string)
+        U.member "universe" meta
+        |> U.to_list
+        |> List.map ~f:(fun a -> U.member "name" a |> U.to_string)
       in
       List.zip_exn names (U.to_list ctxs)
       |> List.filter_map ~f:(fun (name, ctx) ->
@@ -157,7 +160,9 @@ let open_interest json =
 
 let book json =
   decode "l2Book" (fun () ->
-    let level j = { Copyability.Book.px = num (U.member "px" j); size = num (U.member "sz" j) } in
+    let level j =
+      { Copyability.Book.px = num (U.member "px" j); size = num (U.member "sz" j) }
+    in
     match U.member "levels" json with
     | `List [ bids; asks ] ->
       { Copyability.Book.coin = U.member "coin" json |> U.to_string

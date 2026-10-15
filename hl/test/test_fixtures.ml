@@ -19,7 +19,8 @@ let summary ?(window = "month") dir =
         ~funding:(List.length h.funding : int)
         ~snapshot_positions:
           (List.concat_map h.snapshots ~f:(fun s ->
-             List.map s.positions ~f:(fun p -> p.coin, Float.round_decimal p.size ~decimal_digits:4))
+             List.map s.positions ~f:(fun p ->
+               p.coin, Float.round_decimal p.size ~decimal_digits:4))
            : (string * float) list)
         ~curve_points:(List.length h.equity_curve : int)
         ~truncated:(h.fills_truncated : bool)
@@ -38,7 +39,8 @@ let summary ?(window = "month") dir =
 
 let%expect_test "a mainnet account (read-only recording)" =
   summary "mainnet-0x7737";
-  [%expect {|
+  [%expect
+    {|
     ((fills 0) (funding 150)
      (snapshot_positions
       ((BTC -25.1552) (ETH -799.7919) (SOL -20384.06) (AVAX -171568.06)
@@ -56,7 +58,8 @@ let%expect_test "a mainnet account (read-only recording)" =
 
 let%expect_test "an hl-sim trend leader" =
   summary "sim-trend-0";
-  [%expect {|
+  [%expect
+    {|
     ((fills 246) (funding 0) (snapshot_positions ((BTC -2.5014)))
      (curve_points 4) (truncated false) (source Anchored) (trades 1) (seeded 0)
      (mismatches 0))

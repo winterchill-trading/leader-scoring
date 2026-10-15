@@ -50,10 +50,12 @@ let load ~dir =
       |> List.filter_map ~f:(fun f ->
         match String.chop_prefix f ~prefix with
         | Some rest ->
-          Option.map (String.chop_suffix rest ~suffix:".json") ~f:(fun i -> Int.of_string i, f)
+          Option.map (String.chop_suffix rest ~suffix:".json") ~f:(fun i ->
+            Int.of_string i, f)
         | None -> None)
       |> List.sort ~compare:(fun (a, _) (b, _) -> Int.compare a b)
-      |> Deferred.List.map ~how:`Sequential ~f:(fun (_, f) -> Reader.file_contents (dir ^/ f))
+      |> Deferred.List.map ~how:`Sequential ~f:(fun (_, f) ->
+        Reader.file_contents (dir ^/ f))
     in
     let optional name =
       match%bind Sys.file_exists_exn (dir ^/ name) with
