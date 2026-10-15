@@ -207,6 +207,22 @@ let dataset =
          (List.count rows ~f:(fun r -> Option.is_some r.label)))
 ;;
 
+let metrics =
+  Command.basic
+    ~summary:"Print every metric with its unit, direction and formula (Markdown table)"
+    (Command.Param.return (fun () ->
+       Core.print_endline "| Metric | Name | Unit | Better | Formula |";
+       Core.print_endline "| --- | --- | --- | --- | --- |";
+       List.iter Metric.all ~f:(fun m ->
+         Core.printf
+           "| %s | `%s` | %s | %s | %s |\n"
+           (Metric.label m)
+           (Metric.name m)
+           (Metric.Unit.to_string (Metric.unit m))
+           (Metric.Better.to_string (Metric.better m))
+           (String.substr_replace_all (Metric.formula m) ~pattern:"|" ~with_:"\\|"))))
+;;
+
 let () =
   Command.group
     ~summary:"Leader track records, metrics and scores (Hyperliquid, read only)"
@@ -214,6 +230,7 @@ let () =
     ; "score", score
     ; "portfolios", portfolios
     ; "dataset", dataset
+    ; "metrics", metrics
     ]
   |> Command_unix.run
 ;;
