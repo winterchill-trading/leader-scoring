@@ -6,3 +6,4 @@ _build-*/
 python/.venv/
 python/data/
 __pycache__/
+data/
