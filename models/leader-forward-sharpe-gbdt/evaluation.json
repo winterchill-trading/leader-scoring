@@ -1,0 +1,92 @@
+{
+  "target": "forward 30-day Sharpe ratio of daily returns (not annualized), clipped to [-5, 5]",
+  "lookback_days": 90,
+  "horizon_days": 30,
+  "step_days": 15,
+  "rows": {
+    "mainnet": 9092,
+    "synthetic": 25067
+  },
+  "accounts": {
+    "mainnet": 287,
+    "synthetic": 1500
+  },
+  "walk_forward": {
+    "mainnet": {
+      "model": {
+        "folds": 69,
+        "mean": 0.02621909527099493,
+        "std": 0.24896609637732015,
+        "t": 0.8747864292015664,
+        "positive_share": 0.5217391304347826
+      },
+      "composite": {
+        "folds": 69,
+        "mean": 0.0046044153281634016,
+        "std": 0.23736479939459645,
+        "t": 0.16113234286321293,
+        "positive_share": 0.4927536231884058
+      },
+      "sharpe": {
+        "folds": 68,
+        "mean": 0.04037969940675258,
+        "std": 0.21716391326800455,
+        "t": 1.5333096855670003,
+        "positive_share": 0.5441176470588235
+      },
+      "total_return": {
+        "folds": 67,
+        "mean": 0.007376109137035821,
+        "std": 0.2737644195854988,
+        "t": 0.22054018364360145,
+        "positive_share": 0.5074626865671642
+      },
+      "rows": 9063,
+      "top_fifth_label_spread": {
+        "folds": 69,
+        "mean": 0.08028648269846404,
+        "std": 0.33856323275187983,
+        "t": 1.9698229120513313,
+        "positive_share": 0.5797101449275363
+      }
+    },
+    "synthetic": {
+      "model": {
+        "folds": 15,
+        "mean": 0.0611295194318325,
+        "std": 0.02093945967692123,
+        "t": 11.306576882788042,
+        "positive_share": 1.0
+      },
+      "composite": {
+        "folds": 15,
+        "mean": 0.030502679502450274,
+        "std": 0.02722448348420949,
+        "t": 4.339342922565002,
+        "positive_share": 0.9333333333333333
+      },
+      "sharpe": {
+        "folds": 15,
+        "mean": 0.05963837373266836,
+        "std": 0.030095612866397094,
+        "t": 7.674820555637021,
+        "positive_share": 1.0
+      },
+      "total_return": {
+        "folds": 15,
+        "mean": 0.038307676563122145,
+        "std": 0.0302938540368047,
+        "t": 4.897527834544268,
+        "positive_share": 0.9333333333333333
+      },
+      "rows": 20839,
+      "top_fifth_label_spread": {
+        "folds": 15,
+        "mean": 0.07559444821450774,
+        "std": 0.03779806958415308,
+        "t": 7.7457934286483905,
+        "positive_share": 1.0
+      }
+    }
+  }
+}
