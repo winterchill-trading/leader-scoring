@@ -1,0 +1,11 @@
+(library
+ (name leader_scoring_test)
+ (package leader-scoring)
+ (libraries leader-scoring core yojson)
+ (inline_tests
+  (deps
+   (glob_files fixtures/*))
+  (flags
+   (:standard -source-tree-root .)))
+ (preprocess
+  (pps ppx_jane)))
