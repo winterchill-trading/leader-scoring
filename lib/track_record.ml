@@ -64,6 +64,16 @@ module Point = struct
   [@@deriving sexp, compare, equal]
 end
 
+module Fill_entry = struct
+  type t =
+    { time : Time_ns.Alternate_sexp.t
+    ; coin : string
+    ; notional : float
+    ; fee : float
+    }
+  [@@deriving sexp, compare, equal]
+end
+
 module Equity_source = struct
   type t =
     | Venue
@@ -97,6 +107,8 @@ type t =
   ; funding : float
   ; notional_by_coin : (string * float) list
   ; position_mismatches : int
+  ; fill_log : Fill_entry.t array
+  ; funding_log : (Time_ns.Alternate_sexp.t * float) array
   }
 [@@deriving sexp_of]
 
@@ -206,6 +218,13 @@ let is_flat x = Float.( <= ) (Float.abs x) eps
    printed sizes does not count. *)
 let mismatch ~expected ~actual =
   Float.( > ) (Float.abs (expected -. actual)) ((0.001 *. Float.abs expected) +. eps)
+;;
+
+let sort_by_notional =
+  List.sort ~compare:(fun (c1, a) (c2, b) ->
+    match Float.compare b a with
+    | 0 -> String.compare c1 c2
+    | c -> c)
 ;;
 
 let build ?initial_equity ?until (history : History.t) =
@@ -424,13 +443,12 @@ let build ?initial_equity ?until (history : History.t) =
   ; turnover = !turnover
   ; fees = !fees
   ; funding = !funding
-  ; notional_by_coin =
-      Hashtbl.to_alist notional
-      |> List.sort ~compare:(fun (c1, a) (c2, b) ->
-        match Float.compare b a with
-        | 0 -> String.compare c1 c2
-        | c -> c)
+  ; notional_by_coin = sort_by_notional (Hashtbl.to_alist notional)
   ; position_mismatches = !mismatches
+  ; fill_log =
+      Array.of_list_map h.fills ~f:(fun (f : Fill.t) ->
+        { Fill_entry.time = f.time; coin = f.coin; notional = Fill.notional f; fee = f.fee })
+  ; funding_log = Array.of_list_map h.funding ~f:(fun (f : Funding.t) -> f.time, f.usd)
   }
 ;;
 
@@ -478,4 +496,52 @@ let leverage_samples t =
     | Some e when Float.( > ) e 0. && Time_ns.Span.( > ) duration Time_ns.Span.zero ->
       Some (duration, p.gross /. e)
     | _ -> None)
+;;
+
+let window t ~from ~until =
+  let inside time = Time_ns.between time ~low:from ~high:until in
+  let start_equity = Option.value (equity_at t from) ~default:t.initial_equity in
+  let equity =
+    Array.append
+      [| { Equity_point.time = from; equity = start_equity } |]
+      (Array.filter t.equity ~f:(fun p -> Time_ns.( > ) p.time from && inside p.time))
+  in
+  let points =
+    let before =
+      Array.fold t.points ~init:None ~f:(fun acc (p : Point.t) ->
+        if Time_ns.( <= ) p.time from then Some p else acc)
+    in
+    let rest = Array.filter t.points ~f:(fun p -> Time_ns.( > ) p.time from && inside p.time) in
+    match before with
+    | Some p -> Array.append [| { p with time = from } |] rest
+    | None -> rest
+  in
+  let trades =
+    List.filter t.trades ~f:(fun (tr : Trade.t) ->
+      Time_ns.( < ) tr.opened_at until
+      &&
+      match tr.closed_at with
+      | None -> true
+      | Some c -> Time_ns.( > ) c from)
+  in
+  let fill_log = Array.filter t.fill_log ~f:(fun f -> inside f.time) in
+  let funding_log = Array.filter t.funding_log ~f:(fun (time, _) -> inside time) in
+  let notional = String.Table.create () in
+  Array.iter fill_log ~f:(fun f ->
+    Hashtbl.update notional f.coin ~f:(fun v -> Option.value v ~default:0. +. f.notional));
+  { t with
+    from
+  ; until
+  ; trades
+  ; points
+  ; equity
+  ; initial_equity = start_equity
+  ; fills = Array.length fill_log
+  ; turnover = Array.sum (module Float) fill_log ~f:(fun f -> f.notional)
+  ; fees = Array.sum (module Float) fill_log ~f:(fun f -> f.fee)
+  ; funding = Array.sum (module Float) funding_log ~f:snd
+  ; notional_by_coin = sort_by_notional (Hashtbl.to_alist notional)
+  ; fill_log
+  ; funding_log
+  }
 ;;

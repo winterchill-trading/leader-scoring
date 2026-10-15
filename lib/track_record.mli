@@ -92,6 +92,16 @@ module Point : sig
   [@@deriving sexp, compare, equal]
 end
 
+module Fill_entry : sig
+  type t =
+    { time : Time_ns.Alternate_sexp.t
+    ; coin : string
+    ; notional : float
+    ; fee : float
+    }
+  [@@deriving sexp, compare, equal]
+end
+
 module Equity_source : sig
   type t =
     | Venue
@@ -121,6 +131,8 @@ type t =
   ; notional_by_coin : (string * float) list (** traded notional per coin, largest first *)
   ; position_mismatches : int
   (** snapshot positions that disagreed with the replayed fills by more than 0.1% *)
+  ; fill_log : Fill_entry.t array (** every fill, by time, for windowed figures *)
+  ; funding_log : (Time_ns.Alternate_sexp.t * float) array
   }
 [@@deriving sexp_of]
 
@@ -139,3 +151,10 @@ val bars : t -> period:Time_ns.Span.t -> float array
 (** Leverage samples [(duration, gross / equity)] between consecutive points, the last
     one held until [until]; durations sum to the covered time. *)
 val leverage_samples : t -> (Time_ns.Span.t * float) array
+
+(** The record cut to [\[from, until\]]: equity and exposure series start with a point at
+    [from] holding the state then; trades are those open at some time inside the window
+    (closed ones keep their whole pnl); fills and funding inside the window give
+    [turnover], [fees], [funding] and [notional_by_coin]. [initial_equity] becomes the
+    equity at [from]. *)
+val window : t -> from:Time_ns.t -> until:Time_ns.t -> t
