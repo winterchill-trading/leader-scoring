@@ -84,5 +84,8 @@ let () =
            Copyability.estimate ~books record)
        ; Bench.Test.create ~name:"alerts_detect" (fun () ->
            Alerts.detect Alerts.Config.default record ~now:record.until)
+       ; Bench.Test.create ~name:"alerts_scan_weekly" (fun () ->
+           Alerts.scan ~step:(Time_ns.Span.of_day 7.) Alerts.Config.default record)
+       ; Bench.Test.create ~name:"report_create" (fun () -> Report.create ~books ~model busiest)
        ])
 ;;
