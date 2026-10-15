@@ -35,7 +35,8 @@ module Row : sig
   val to_csv : t -> string
 end
 
-(** One row per cutoff, from [from + lookback] to [until - horizon] every [step]
+(** One row per cutoff between [from + lookback] and [until - horizon], on the grid of
+    multiples of [step] since the epoch, so every account's rows of one cutoff line up
     (defaults 90, 30 and 15 days). *)
 val rows
   :  ?lookback:Time_ns.Span.t

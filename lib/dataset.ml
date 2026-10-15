@@ -77,5 +77,12 @@ let rows
       in
       go (Time_ns.add cutoff step) (row :: acc))
   in
-  go (Time_ns.add tr.from lookback) []
+  (* Cutoffs sit on one grid for every account (multiples of [step] since the epoch), so
+     the rows of one cutoff form a cross-section across leaders. *)
+  let first =
+    let earliest = Time_ns.to_int_ns_since_epoch (Time_ns.add tr.from lookback) in
+    let step_ns = Time_ns.Span.to_int_ns step in
+    Time_ns.of_int_ns_since_epoch ((earliest + step_ns - 1) / step_ns * step_ns)
+  in
+  go first []
 ;;
