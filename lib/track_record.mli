@@ -20,9 +20,9 @@
     at its time ([Anchored]); without a snapshot, [E0] is [?initial_equity] when given
     ([Given]) and otherwise the peak gross notional, as if the leader never used more
     than 1x ([Assumed]; returns are then only indicative). When the history carries a
-    venue curve with at least two points, that curve is the equity series ([Venue]) and
-    the rebuilt one is used for exposure only. Deposits and withdrawals never move either
-    curve. *)
+    venue curve of at least ten points (or two, when nothing anchors the rebuilt one),
+    that curve is the equity series ([Venue]) and the rebuilt one is used for exposure
+    only. Deposits and withdrawals never move either curve. *)
 
 open! Core
 

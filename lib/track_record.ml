@@ -471,7 +471,12 @@ let build ?initial_equity ?until (history : History.t) =
       { Point.time; equity = e0 +. pnl; gross; net; open_positions })
   in
   let equity_source, equity, initial =
-    if List.length h.equity_curve >= 2
+    (* A coarse venue curve (hl-sim samples a few points per run) says less than the
+       curve rebuilt from fills and anchored on a snapshot; prefer the venue's only when
+       it has some resolution or nothing else is anchored. *)
+    let venue_points = List.length h.equity_curve in
+    if venue_points >= 10
+       || (venue_points >= 2 && Option.is_none !anchor && Option.is_none initial_equity)
     then (
       let curve = Array.of_list h.equity_curve in
       Equity_source.Venue, curve, curve.(0).equity)
