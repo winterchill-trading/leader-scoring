@@ -329,3 +329,12 @@ let unit t = (info t).unit
 let better t = (info t).better
 let by_name = String.Map.of_alist_exn (List.map all ~f:(fun t -> name t, t))
 let of_name s = Map.find by_name s
+
+(* Last, so the comparison operators on [t] do not shadow the float ones above. *)
+include Comparable.Make (struct
+    type nonrec t = t [@@deriving sexp, compare]
+  end)
+
+include Hashable.Make (struct
+    type nonrec t = t [@@deriving sexp, compare, hash]
+  end)

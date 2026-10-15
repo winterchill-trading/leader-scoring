@@ -44,6 +44,9 @@ type t =
   | Oi_share_max
 [@@deriving sexp, compare, equal, enumerate, hash]
 
+include Comparable.S with type t := t
+include Hashable.S with type t := t
+
 (** Snake-case name, used in JSON, CSV headers and the model's feature schema. Never
     renamed: models and dashboards key on it. *)
 val name : t -> string
