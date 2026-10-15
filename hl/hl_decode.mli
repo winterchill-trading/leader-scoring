@@ -1,8 +1,9 @@
 (** Hyperliquid [/info] answers decoded into leader-scoring's venue-neutral types.
 
     Amounts arrive as decimal strings with up to ten decimals; they are read as floats.
-    Spot fills ([@107], [PURR/USDC]) are dropped unless [include_spot]: a perpetual
-    account cannot mirror them. *)
+    Fills of anything but perpetuals (spot [@107] and [PURR/USDC], and [#<id>]
+    instruments) are dropped unless [include_spot]: a perpetual account cannot mirror
+    them, and they never appear in [clearinghouseState]. *)
 
 open! Core
 open Leader_scoring

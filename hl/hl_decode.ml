@@ -3,7 +3,11 @@ open Leader_scoring
 module U = Yojson.Safe.Util
 
 let time_of_ms ms = Time_ns.of_int_ns_since_epoch (ms * 1_000_000)
-let is_spot coin = String.is_prefix coin ~prefix:"@" || String.mem coin '/'
+(* Spot pairs are "@<index>" or "BASE/QUOTE"; "#<id>" instruments are not perpetuals
+   either (they never appear in clearinghouseState). *)
+let is_spot coin =
+  String.is_prefix coin ~prefix:"@" || String.is_prefix coin ~prefix:"#" || String.mem coin '/'
+;;
 
 let num = function
   | `String s -> Float.of_string s
