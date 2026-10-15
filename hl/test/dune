@@ -1,0 +1,11 @@
+(library
+ (name leader_scoring_hl_test)
+ (package leader-scoring-hl)
+ (libraries leader-scoring leader-scoring-hl core async yojson)
+ (inline_tests
+  (deps
+   (source_tree fixtures))
+  (flags
+   (:standard -source-tree-root .)))
+ (preprocess
+  (pps ppx_jane)))
