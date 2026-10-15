@@ -1,0 +1,16 @@
+(library
+ (name leader_scoring_hl)
+ (public_name leader-scoring-hl)
+ (libraries
+  core
+  core_unix
+  core_unix.filename_unix
+  core_unix.sys_unix
+  async
+  yojson
+  uri
+  leader-scoring
+  hl-protocol
+  hl-client)
+ (preprocess
+  (pps ppx_jane)))
