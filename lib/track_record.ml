@@ -68,6 +68,8 @@ module Fill_entry = struct
   type t =
     { time : Time_ns.Alternate_sexp.t
     ; coin : string
+    ; sz : float (** signed *)
+    ; px : float
     ; notional : float
     ; fee : float
     }
@@ -447,7 +449,13 @@ let build ?initial_equity ?until (history : History.t) =
   ; position_mismatches = !mismatches
   ; fill_log =
       Array.of_list_map h.fills ~f:(fun (f : Fill.t) ->
-        { Fill_entry.time = f.time; coin = f.coin; notional = Fill.notional f; fee = f.fee })
+        { Fill_entry.time = f.time
+        ; coin = f.coin
+        ; sz = f.sz
+        ; px = f.px
+        ; notional = Fill.notional f
+        ; fee = f.fee
+        })
   ; funding_log = Array.of_list_map h.funding ~f:(fun (f : Funding.t) -> f.time, f.usd)
   }
 ;;

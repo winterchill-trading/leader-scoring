@@ -96,6 +96,8 @@ module Fill_entry : sig
   type t =
     { time : Time_ns.Alternate_sexp.t
     ; coin : string
+    ; sz : float (** signed *)
+    ; px : float
     ; notional : float
     ; fee : float
     }
