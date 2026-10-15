@@ -41,7 +41,12 @@ let%expect_test "round trips, a flip, fees split by size, funding, anchored equi
   in
   let funding =
     [ { Funding.time = at 0.5; coin = "BTC"; usd = -0.5; position = Some 1.; rate = None }
-    ; { Funding.time = at 2.5; coin = "BTC"; usd = 0.2; position = Some (-1.); rate = None }
+    ; { Funding.time = at 2.5
+      ; coin = "BTC"
+      ; usd = 0.2
+      ; position = Some (-1.)
+      ; rate = None
+      }
     ]
   in
   let snapshots = [ snapshot ~time:(at 3.) ~account_value:1000. [] ] in
@@ -111,11 +116,13 @@ let%expect_test "missed fills are repaired from position_before and counted" =
 
 let%expect_test "venue curve wins for equity; bars carry the latest point forward" =
   let equity_curve =
-    List.map [ 0., 100.; 1., 110.; 3., 99. ] ~f:(fun (d, equity) ->
-      { Equity_point.time = at d; equity })
+    List.map
+      [ 0., 100.; 1., 110.; 3., 99. ]
+      ~f:(fun (d, equity) -> { Equity_point.time = at d; equity })
   in
   let tr =
-    Track_record.build (history ~equity_curve [ fill ~time:(at 0.5) ~coin:"BTC" ~px:50. 1. ])
+    Track_record.build
+      (history ~equity_curve [ fill ~time:(at 0.5) ~coin:"BTC" ~px:50. 1. ])
   in
   print_s
     [%message
@@ -126,6 +133,5 @@ let%expect_test "venue curve wins for equity; bars carry the latest point forwar
           (Array.map (Track_record.leverage_samples tr) ~f:(fun (d, l) ->
              Time_ns.Span.to_hr d, round l)
            : (float * float) array)];
-  [%expect
-    {| ((source Venue) (bars (100 110 110 99)) (leverage ((60 0.5)))) |}]
+  [%expect {| ((source Venue) (bars (100 110 110 99)) (leverage ((60 0.5)))) |}]
 ;;

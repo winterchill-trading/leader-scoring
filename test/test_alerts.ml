@@ -27,7 +27,9 @@ let record =
   let equity_curve =
     List.init 48 ~f:(fun d ->
       let equity =
-        if d < 40 then 100_000. +. (100. *. Float.of_int d) else 104_000. *. (1. -. (0.05 *. Float.of_int (d - 39)))
+        if d < 40
+        then 100_000. +. (100. *. Float.of_int d)
+        else 104_000. *. (1. -. (0.05 *. Float.of_int (d - 39)))
       in
       { Equity_point.time = at (Float.of_int d); equity })
   in
@@ -38,7 +40,8 @@ let print alerts =
   List.iter alerts ~f:(fun (a : Alerts.Alert.t) ->
     printf
       "%s %-8s %-16s %s\n"
-      (Time_ns.to_string_iso8601_basic a.time ~zone:Time_float.Zone.utc |> fun s -> String.prefix s 10)
+      (Time_ns.to_string_iso8601_basic a.time ~zone:Time_float.Zone.utc
+       |> fun s -> String.prefix s 10)
       (Alerts.Severity.to_string a.severity)
       (Alerts.Kind.to_string a.kind)
       a.message)
@@ -46,7 +49,8 @@ let print alerts =
 
 let%expect_test "detect at the end of the wild week" =
   print (Alerts.detect Alerts.Config.default record ~now:(at 47.));
-  [%expect {|
+  [%expect
+    {|
     2026-02-17 warning  drawdown_breach  39.9% below the peak; the baseline's worst was 0.0%
     2026-02-17 warning  leverage_spike   leverage reached 7.4x; baseline p95 0.1x
     2026-02-17 warning  style_drift      long bias moved from +1.00 to -1.00
@@ -62,7 +66,8 @@ let%expect_test "nothing to report during the calm weeks" =
 
 let%expect_test "scan: when each alert turned on" =
   print (Alerts.scan ~step:Time_ns.Span.day Alerts.Config.default record);
-  [%expect {|
+  [%expect
+    {|
     2026-02-10 info     style_drift      now trades mostly DOGE (78.0% of notional), not among BTC
     2026-02-11 warning  leverage_spike   leverage reached 5.1x; baseline p95 0.1x
     2026-02-15 warning  drawdown_breach  29.9% below the peak; the baseline's worst was 0.0%

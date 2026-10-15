@@ -5,7 +5,11 @@ let metrics alist = Metrics.of_alist ~bar:Time_ns.Span.day alist
 
 let leader ?(trades = 10.) ~sharpe ~mdd ~lev () =
   metrics
-    [ Sharpe, Some sharpe; Max_drawdown, Some mdd; Leverage_p95, Some lev; Trades, Some trades ]
+    [ Sharpe, Some sharpe
+    ; Max_drawdown, Some mdd
+    ; Leverage_p95, Some lev
+    ; Trades, Some trades
+    ]
 ;;
 
 let config =
@@ -46,7 +50,8 @@ let%expect_test "composite of percentiles, flipped where lower is better" =
       c.percentile
       c.weight
       c.contribution);
-  [%expect {|
+  [%expect
+    {|
     a      score= 75.0 rank=1 pct=1.00
     c      score= 60.0 rank=2 pct=0.67
     d      score= 50.0 rank=3 pct=0.33

@@ -3,8 +3,8 @@ open Leader_scoring
 
 let coins = [ "BTC"; "ETH"; "SOL" ]
 
-(* Fills a few minutes to a few hours apart over up to two months, sizes small enough
-   that the account below never goes broke, then a closing snapshot. *)
+(* Fills a few minutes to a few hours apart over up to two months, sizes small enough that
+   the account below never goes broke, then a closing snapshot. *)
 let history : History.t Quickcheck.Generator.t =
   let open Quickcheck.Generator.Let_syntax in
   let%bind n = Int.gen_incl 2 60 in
@@ -23,7 +23,16 @@ let history : History.t Quickcheck.Generator.t =
   let _, fills =
     List.fold_mapi steps ~init:Helpers.t0 ~f:(fun i time (coin, gap_min, sz, px, fee) ->
       let time = Time_ns.add time (Time_ns.Span.of_int_sec (gap_min * 60)) in
-      time, { Fill.time; coin; px; sz; fee; position_before = None; liquidation = false; id = i })
+      ( time
+      , { Fill.time
+        ; coin
+        ; px
+        ; sz
+        ; fee
+        ; position_before = None
+        ; liquidation = false
+        ; id = i
+        } ))
   in
   let last = (List.last_exn fills).time in
   let marks =
@@ -34,12 +43,18 @@ let history : History.t Quickcheck.Generator.t =
     List.filter_map marks ~f:(fun (c, f) ->
       Option.map f ~f:(fun (f : Fill.t) ->
         let size =
-          List.sum (module Float) fills ~f:(fun g -> if String.equal g.coin c then g.sz else 0.)
+          List.sum (module Float) fills ~f:(fun g ->
+            if String.equal g.coin c then g.sz else 0.)
         in
         c, size, f.px))
   in
   Helpers.history
-    ~snapshots:[ Helpers.snapshot ~time:(Time_ns.add last Time_ns.Span.hour) ~account_value positions ]
+    ~snapshots:
+      [ Helpers.snapshot
+          ~time:(Time_ns.add last Time_ns.Span.hour)
+          ~account_value
+          positions
+      ]
     fills
 ;;
 

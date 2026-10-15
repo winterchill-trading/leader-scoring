@@ -38,7 +38,9 @@ let record =
        let source = Hl_source.create ~max_fill_pages:pages config in
        let until = Time_ns.now () in
        let from = Time_ns.sub until (Time_ns.Span.of_day days) in
-       let%bind raw = Hl_source.fetch_raw source ~account:(String.lowercase address) ~from ~until in
+       let%bind raw =
+         Hl_source.fetch_raw source ~account:(String.lowercase address) ~from ~until
+       in
        let%map () = Raw.save raw ~dir:out |> Deferred.ok in
        Core.printf
          "%s: %d fill pages, %d funding pages, state %b, portfolio %b\n"
@@ -61,7 +63,10 @@ let score =
     ~summary:"Score recorded accounts: metrics, composite ranking, alerts"
     (let%map_open.Command dirs = anon (sequence ("DIR" %: string))
      and window =
-       flag "-portfolio-window" (optional_with_default "month" string) ~doc:"W portfolio curve"
+       flag
+         "-portfolio-window"
+         (optional_with_default "month" string)
+         ~doc:"W portfolio curve"
      and json = flag "-json" no_arg ~doc:" print one JSON object per account" in
      fun () ->
        let open Deferred.Or_error.Let_syntax in
@@ -81,12 +86,13 @@ let score =
            Core.print_endline
              (Yojson.Safe.to_string
                 (`Assoc
-                    [ "account", `String account
-                    ; "score", `Float r.score
-                    ; "rank", Option.value_map r.rank ~default:`Null ~f:(fun i -> `Int i)
-                    ; "equity_source", `String (Track_record.Equity_source.to_string tr.equity_source)
-                    ; "metrics", Metrics.to_json m
-                    ])))
+                  [ "account", `String account
+                  ; "score", `Float r.score
+                  ; "rank", Option.value_map r.rank ~default:`Null ~f:(fun i -> `Int i)
+                  ; ( "equity_source"
+                    , `String (Track_record.Equity_source.to_string tr.equity_source) )
+                  ; "metrics", Metrics.to_json m
+                  ])))
        else (
          List.iter ranked ~f:(fun r ->
            Core.printf
@@ -139,7 +145,12 @@ let portfolios =
            in
            let raw =
              { Raw.meta =
-                 { address; fetched_at; from = Time_ns.epoch; until = fetched_at; fills_capped = false }
+                 { address
+                 ; fetched_at
+                 ; from = Time_ns.epoch
+                 ; until = fetched_at
+                 ; fills_capped = false
+                 }
              ; fills_pages = []
              ; funding_pages = []
              ; state = None
@@ -158,14 +169,20 @@ let dataset =
      and days = flag "-days" (optional_with_default 400 int) ~doc:"D synthetic history"
      and seed = flag "-seed" (optional_with_default 1 int) ~doc:"N synthetic seed"
      and replay =
-       flag "-replay" (optional string) ~doc:"DIR directory of recordings (one per account)"
+       flag
+         "-replay"
+         (optional string)
+         ~doc:"DIR directory of recordings (one per account)"
      and window =
        flag
          "-portfolio-window"
          (optional_with_default "allTime" string)
          ~doc:"W portfolio curve of replayed recordings"
      and group =
-       flag "-replay-group" (optional_with_default "mainnet" string) ~doc:"NAME group column"
+       flag
+         "-replay-group"
+         (optional_with_default "mainnet" string)
+         ~doc:"NAME group column"
      and out = flag "-out" (required string) ~doc:"FILE CSV to write" in
      fun () ->
        let open Deferred.Or_error.Let_syntax in
@@ -183,11 +200,15 @@ let dataset =
            let dirs = Array.to_list entries |> List.sort ~compare:String.compare in
            let%map histories =
              Deferred.Or_error.List.filter_map ~how:`Sequential dirs ~f:(fun d ->
-               Deferred.map (Raw.load ~dir:(dir ^/ d)) ~f:(function
-                 | Error _ -> Ok None
-                 | Ok raw -> Ok (Result.ok (Raw.to_history ~portfolio_window:window raw))))
+               Deferred.map
+                 (Raw.load ~dir:(dir ^/ d))
+                 ~f:(function
+                   | Error _ -> Ok None
+                   | Ok raw ->
+                     Ok (Result.ok (Raw.to_history ~portfolio_window:window raw))))
            in
-           List.concat_map histories ~f:(fun h -> Dataset.rows ~group (Track_record.build h))
+           List.concat_map histories ~f:(fun h ->
+             Dataset.rows ~group (Track_record.build h))
        in
        let rows = synthetic_rows @ replay_rows in
        let%map () =

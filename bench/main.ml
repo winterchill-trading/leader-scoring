@@ -29,7 +29,9 @@ let universe =
 let book coin =
   let side sign =
     Array.init 50 ~f:(fun i ->
-      { Copyability.Book.px = 100. +. (sign *. 0.01 *. Float.of_int (i + 1)); size = 100. })
+      { Copyability.Book.px = 100. +. (sign *. 0.01 *. Float.of_int (i + 1))
+      ; size = 100.
+      })
   in
   { Copyability.Book.coin; bids = side (-1.); asks = side 1. }
 ;;
@@ -45,23 +47,29 @@ let model =
   let tree k =
     let nodes = 13 in
     `Assoc
-      [ "feature", `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (i + k) % n)))
+      [ ( "feature"
+        , `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (i + k) % n)))
+        )
       ; "threshold", `List (List.init nodes ~f:(fun i -> `Float (Float.of_int i *. 0.1)))
       ; "missing_left", `List (List.init nodes ~f:(fun _ -> `Int 1))
-      ; "left", `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (2 * i) + 1)))
-      ; "right", `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (2 * i) + 2)))
+      ; ( "left"
+        , `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (2 * i) + 1)))
+        )
+      ; ( "right"
+        , `List (List.init nodes ~f:(fun i -> `Int (if i >= 6 then -1 else (2 * i) + 2)))
+        )
       ; "value", `List (List.init nodes ~f:(fun i -> `Float (Float.of_int i *. 0.001)))
       ]
   in
   Model.of_json
     (`Assoc
-        [ "format", `Int 1
-        ; "name", `String "bench"
-        ; "features", `List (List.map Dataset.feature_names ~f:(fun s -> `String s))
-        ; "base_score", `Float 0.
-        ; "trees", `List (List.init 200 ~f:tree)
-        ; "evaluation", `Null
-        ])
+      [ "format", `Int 1
+      ; "name", `String "bench"
+      ; "features", `List (List.map Dataset.feature_names ~f:(fun s -> `String s))
+      ; "base_score", `Float 0.
+      ; "trees", `List (List.init 200 ~f:tree)
+      ; "evaluation", `Null
+      ])
   |> Or_error.ok_exn
 ;;
 
@@ -74,7 +82,8 @@ let () =
     (List.length universe);
   Command_unix.run
     (Bench.make_command
-       [ Bench.Test.create ~name:"track_record_build" (fun () -> Track_record.build busiest)
+       [ Bench.Test.create ~name:"track_record_build" (fun () ->
+           Track_record.build busiest)
        ; Bench.Test.create ~name:"metrics_compute" (fun () -> Metrics.compute record)
        ; Bench.Test.create ~name:"score_rank_300" (fun () ->
            Score.rank Score.Config.default universe)
@@ -86,6 +95,7 @@ let () =
            Alerts.detect Alerts.Config.default record ~now:record.until)
        ; Bench.Test.create ~name:"alerts_scan_weekly" (fun () ->
            Alerts.scan ~step:(Time_ns.Span.of_day 7.) Alerts.Config.default record)
-       ; Bench.Test.create ~name:"report_create" (fun () -> Report.create ~books ~model busiest)
+       ; Bench.Test.create ~name:"report_create" (fun () ->
+           Report.create ~books ~model busiest)
        ])
 ;;

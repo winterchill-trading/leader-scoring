@@ -37,7 +37,8 @@ let%expect_test "OCaml predictions equal scikit-learn's on the parity fixture" =
         ~rows:(List.length rows : int)
         ~rows_with_missing:(missing : int)
         ~worst_difference:(worst : float)];
-  [%expect {|
+  [%expect
+    {|
     ((name leader-forward-sharpe-gbdt) (trees 200) (rows 200)
      (rows_with_missing 73) (worst_difference 0))
     |}]
@@ -56,7 +57,8 @@ let%expect_test "a model trained on other features is refused" =
   (match Model.of_json json with
    | Ok _ -> print_endline "accepted"
    | Error e -> print_endline (String.prefix (Error.to_string_hum e) 60));
-  [%expect {|
+  [%expect
+    {|
     (Model.of_json
      (Failure
       "model features (digest 8ce02eb85

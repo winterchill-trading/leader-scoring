@@ -18,16 +18,14 @@ let%expect_test "quantiles match numpy's linear method" =
 
 let%expect_test "weighted quantile, ranks with ties, correlations" =
   print_s
-    [%sexp
-      (Stats.weighted_quantile [| 1., 1.; 10., 8.; 100., 1. |] 0.5 : float option)];
+    [%sexp (Stats.weighted_quantile [| 1., 1.; 10., 8.; 100., 1. |] 0.5 : float option)];
   print_s [%sexp (Stats.ranks [| 3.; 1.; 3.; 2. |] : float array)];
   print_s
     [%sexp
       (Stats.spearman [| 1.; 2.; 3.; 4. |] [| 10.; 20.; 30.; 1000. |] : float option)];
   print_s [%sexp (Stats.pearson [| 1.; 2.; 3. |] [| 3.; 2.; 1. |] : float option)];
   print_s [%sexp (Stats.stdev [| 2.; 4.; 4.; 4.; 5.; 5.; 7.; 9. |] : float option)];
-  [%expect
-    {|
+  [%expect {|
     (10)
     (3.5 1 3.5 2)
     (1)

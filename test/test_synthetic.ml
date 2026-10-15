@@ -6,9 +6,12 @@ let%expect_test "synthetic leaders replay without position mismatches" =
   List.iter universe ~f:(fun (h, p) ->
     let tr = Track_record.build h in
     let m = Metrics.compute tr in
-    let g metric = Option.value_map (Metrics.get m metric) ~default:"-" ~f:(sprintf "%.3f") in
+    let g metric =
+      Option.value_map (Metrics.get m metric) ~default:"-" ~f:(sprintf "%.3f")
+    in
     printf
-      "%s mu=%+.3f lev=%4.1f mart=%b fills=%4d mism=%d src=%s ret=%s sharpe=%s mdd=%s lev95=%s\n"
+      "%s mu=%+.3f lev=%4.1f mart=%b fills=%4d mism=%d src=%s ret=%s sharpe=%s mdd=%s \
+       lev95=%s\n"
       h.account
       p.mu
       p.leverage
@@ -20,7 +23,8 @@ let%expect_test "synthetic leaders replay without position mismatches" =
       (g Sharpe)
       (g Max_drawdown)
       (g Leverage_p95));
-  [%expect {|
+  [%expect
+    {|
     synthetic-0000 mu=-0.028 lev= 1.0 mart=false fills=  70 mism=0 src=anchored ret=-0.041 sharpe=-0.895 mdd=0.128 lev95=0.264
     synthetic-0001 mu=+0.016 lev= 3.0 mart=false fills= 177 mism=0 src=anchored ret=0.265 sharpe=1.191 mdd=0.557 lev95=3.630
     synthetic-0002 mu=-0.022 lev= 2.0 mart=false fills=  49 mism=0 src=anchored ret=-0.034 sharpe=0.178 mdd=0.268 lev95=2.062

@@ -18,7 +18,13 @@ let%expect_test "a 60-day venue curve and four round trips" =
     List.init 61 ~f:(fun d -> d)
     |> List.folding_map ~init:10_000. ~f:(fun e d ->
       let r =
-        if d = 0 then 0. else if d = 20 then -0.10 else if d >= 40 && d <= 42 then -0.03 else 0.01
+        if d = 0
+        then 0.
+        else if d = 20
+        then -0.10
+        else if d >= 40 && d <= 42
+        then -0.03
+        else 0.01
       in
       let e = e *. (1. +. r) in
       e, { Equity_point.time = at (Float.of_int d); equity = e })
@@ -89,9 +95,13 @@ let close ~what a b =
   match a, b with
   | None, None -> true
   | Some a, Some b ->
-    Float.( <= ) (Float.abs (a -. b)) ((1e-6 *. Float.max (Float.abs a) (Float.abs b)) +. 1e-9)
+    Float.( <= )
+      (Float.abs (a -. b))
+      ((1e-6 *. Float.max (Float.abs a) (Float.abs b)) +. 1e-9)
   | _ ->
-    print_s [%message "defined on one side only" (what : string) (a : float option) (b : float option)];
+    print_s
+      [%message
+        "defined on one side only" (what : string) (a : float option) (b : float option)];
     false
 ;;
 
@@ -158,7 +168,8 @@ let%test_unit "a deeper trough never lowers the max drawdown" =
   in
   Quickcheck.test ~trials:300 gen ~f:(fun (es, i, cut) ->
     let curve es =
-      List.mapi es ~f:(fun d equity -> { Equity_point.time = at (Float.of_int d); equity })
+      List.mapi es ~f:(fun d equity ->
+        { Equity_point.time = at (Float.of_int d); equity })
     in
     let mdd es =
       Metrics.get (metrics (history ~equity_curve:(curve es) [])) Max_drawdown

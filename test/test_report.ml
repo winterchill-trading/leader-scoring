@@ -6,7 +6,9 @@ let%expect_test "report JSON of two synthetic leaders, ranked" =
   let book coin =
     let side sign =
       Array.init 20 ~f:(fun i ->
-        { Copyability.Book.px = 100. +. (sign *. 0.05 *. Float.of_int (i + 1)); size = 500. })
+        { Copyability.Book.px = 100. +. (sign *. 0.05 *. Float.of_int (i + 1))
+        ; size = 500.
+        })
     in
     { Copyability.Book.coin; bids = side (-1.); asks = side 1. }
   in
@@ -29,12 +31,18 @@ let%expect_test "report JSON of two synthetic leaders, ranked" =
           ~capacity:
             (* rounded: the bisection goes through [10 ** x], whose last bits may differ
                between macOS and glibc *)
-            (member "capacity" json |> member "capacity_usd" |> to_number |> Float.iround_nearest_exn
+            (member "capacity" json
+             |> member "capacity_usd"
+             |> to_number
+             |> Float.iround_nearest_exn
              : int)
           ~alerts:(List.length r.alerts : int)
           (keys : string list)]);
-  print_s [%message "" ~catalog:(List.length (Yojson.Safe.Util.to_list (Report.catalog_json ())) : int)];
-  [%expect {|
+  print_s
+    [%message
+      "" ~catalog:(List.length (Yojson.Safe.Util.to_list (Report.catalog_json ())) : int)];
+  [%expect
+    {|
     ((account synthetic-0001) (score 70) (curve_points 5) (metrics 34)
      (capacity 377502) (alerts 2)
      (keys

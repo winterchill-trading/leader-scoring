@@ -17,16 +17,22 @@ let books = String.Map.of_alist_exn [ "BTC", book "BTC" ]
 let%expect_test "walking the book" =
   let show side notional =
     let e = Option.value_exn (Copyability.walk (book "BTC") ~side ~notional) in
-    printf "%-4s %9.0f filled=%9.0f cost=%.3f bps\n"
-      (match side with `Buy -> "buy" | `Sell -> "sell")
-      notional e.filled e.cost_bps
+    printf
+      "%-4s %9.0f filled=%9.0f cost=%.3f bps\n"
+      (match side with
+       | `Buy -> "buy"
+       | `Sell -> "sell")
+      notional
+      e.filled
+      e.cost_bps
   in
   show `Buy 5_000.;
   show `Buy 50_000.;
   show `Sell 50_000.;
   show `Buy 1_000_000.;
   print_s [%sexp (Copyability.Book.depth_within (book "BTC") ~bps:5. : float * float)];
-  [%expect {|
+  [%expect
+    {|
     buy       5000 filled=     5000 cost=1.000 bps
     buy      50000 filled=    50000 cost=3.000 bps
     sell     50000 filled=    50000 cost=3.000 bps
@@ -49,15 +55,22 @@ let record =
 let%expect_test "capacity curve of a leader trading its whole equity in BTC" =
   let est = Copyability.estimate ~books record in
   List.iter est.curve ~f:(fun p ->
-    printf "%10.0f orders=%d mean=%.3f median=%.3f p90=%.3f unfilled=%.3f\n"
-      p.follower_equity p.orders p.mean_cost_bps p.median_cost_bps p.p90_cost_bps p.unfilled_share);
+    printf
+      "%10.0f orders=%d mean=%.3f median=%.3f p90=%.3f unfilled=%.3f\n"
+      p.follower_equity
+      p.orders
+      p.mean_cost_bps
+      p.median_cost_bps
+      p.p90_cost_bps
+      p.unfilled_share);
   print_s
     [%message
       ""
         ~capacity:(Option.map est.capacity ~f:Float.iround_nearest_exn : int option)
         ~orders:(est.orders : int)
         ~coins_without_book:(est.coins_without_book : string list)];
-  [%expect {|
+  [%expect
+    {|
           1000 orders=2 mean=1.000 median=1.000 p90=1.000 unfilled=0.000
          10000 orders=2 mean=1.000 median=1.000 p90=1.000 unfilled=0.000
         100000 orders=2 mean=5.500 median=5.500 p90=5.501 unfilled=0.000
