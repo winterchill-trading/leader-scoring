@@ -41,8 +41,18 @@ let info_status t body =
   Hl_client.Http.post_json (Hl_client.Config.info_uri t.config) body
 ;;
 
+(* Transport errors (a dropped TLS handshake, a reset) are retried twice, 2 s and 4 s
+   later; an HTTP status is an answer and is not retried here. *)
+let rec info_retrying t body ~attempt =
+  match%bind info_status t body with
+  | Error _ when attempt < 3 ->
+    let%bind () = Clock_ns.after (Time_ns.Span.of_int_sec (2 * attempt)) in
+    info_retrying t body ~attempt:(attempt + 1)
+  | result -> return result
+;;
+
 let info t body =
-  match%map info_status t body with
+  match%map info_retrying t body ~attempt:1 with
   | Error e -> Error e
   | Ok { status; body } when status >= 200 && status < 300 -> Ok body
   | Ok { status; body } ->

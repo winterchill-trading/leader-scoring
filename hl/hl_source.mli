@@ -4,7 +4,8 @@
 
     Requests are spaced by [pause] (default 1.2 s: most info requests weigh 20 of the
     1200 per minute an IP may spend). A non-2xx answer to [userFunding] or [portfolio]
-    is treated as "none" (hl-sim serves neither); for fills and state it is an error. *)
+    is treated as "none" (hl-sim serves neither); for fills and state it is an error.
+    Transport failures are retried twice. *)
 
 open! Core
 open Async
