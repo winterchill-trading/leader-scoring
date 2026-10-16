@@ -64,7 +64,7 @@ let percentile_of xs x =
     /. Float.of_int (n - 1))
 ;;
 
-let rank (config : Config.t) universe =
+let rank ?(excluded = String.Map.empty) (config : Config.t) universe =
   let weights = List.filter config.weights ~f:(fun (_, w) -> Float.( > ) w 0.) in
   let total_weight = List.sum (module Float) weights ~f:snd in
   let eligibility (m : Metrics.t) days =
@@ -82,7 +82,10 @@ let rank (config : Config.t) universe =
   in
   let entries =
     List.map universe ~f:(fun (account, metrics, days) ->
-      account, metrics, eligibility metrics days)
+      ( account
+      , metrics
+      , eligibility metrics days
+        @ (Map.find excluded account |> Option.value ~default:[]) ))
   in
   (* Percentiles are taken among eligible leaders; when nobody is eligible, among all. *)
   let pool =

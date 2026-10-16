@@ -54,8 +54,15 @@ module Ranked : sig
 end
 
 (** [rank config universe], with [(account, metrics, covered days)] per leader. The result
-    is sorted: ranked leaders by score, then the rest by score. Ties keep the input order. *)
-val rank : Config.t -> (string * Metrics.t * float) list -> Ranked.t list
+    is sorted: ranked leaders by score, then the rest by score. Ties keep the input order.
+    [excluded] gives reasons that take a leader out of the ranking besides the floors (an
+    integrity flag, {!Integrity.Policy.reasons}); such a leader is scored but not ranked,
+    and does not count in the other leaders' percentiles. *)
+val rank
+  :  ?excluded:string list String.Map.t
+  -> Config.t
+  -> (string * Metrics.t * float) list
+  -> Ranked.t list
 
 (** Percentile helper used by {!rank}: where [x] falls in [xs] (which includes it). *)
 val percentile_of : float array -> float -> float
