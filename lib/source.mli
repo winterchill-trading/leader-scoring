@@ -8,7 +8,7 @@ open Async_kernel
 module type S = sig
   type t
 
-  (** Short venue name stored in {!History.venue}. *)
+  (** Short venue name, stored in the [venue] field of the histories it returns. *)
   val venue : string
 
   (** Fills, funding and snapshots of [account] between [from] and [until], and the
