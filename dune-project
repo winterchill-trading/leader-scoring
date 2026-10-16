@@ -27,6 +27,7 @@
   oxcaml
   dune
   core
+  async_kernel
   ppx_jane
   yojson
   market-data
