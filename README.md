@@ -281,18 +281,23 @@ check returns a typed flag with its evidence:
 | --- | --- | --- |
 | `self_trade` | the same trade id, coin, time and price on both sides of one account | any |
 | `wash_trade` | opposite fills within 1 s at one price (1 bp) and size (10%) | 5 pairs and 20% of volume |
-| `counterparty` | watched accounts on the two sides of the same trades, and their group | 3 trades and 5% of volume |
-| `co_trading` | orders in one coin and side within 60 s of another account's, against the count with one side shifted by 1 to 3 hours; clusters are connected components | 20 matches, similarity 0.3, 3 times the shifted count |
+| `counterparty` | watched accounts on the two sides of the same trades, and their group | 10 trades, 5% of volume, 5 times the share random matching among watched accounts gives |
+| `co_trading` | orders in one coin and side within 60 s of another account's, against the count with one side shifted circularly by sevenths of the observed span (at least 20 windows); clusters are connected components | 20 matches, similarity 0.3, 3 times the shifted count |
 | `front_running` | orders followed within 5 s by 50k USD of net same-side flow, against shifted times | 20 orders, binomial z 3, twice the base rate |
-| `creation_burst` | accounts first seen within a day of each other | 3 accounts; a warning only when they are also linked |
-| `off_book_price` | fills more than 50 bps outside quotes within 2 s or other accounts' fills then | 3 fills and 10% |
+| `creation_burst` | accounts first seen within a day of the first of them | 3 accounts; a warning only for members also linked by the flags above |
+| `off_book_price` | fills more than 200 bps outside quotes within 0.5 s or other accounts' fills then | 3 fills and 10% |
 
 `Integrity.Policy.default` takes every flag of severity warning or above out of the
 composite ranking (`Report.rank`): the leader is still scored and shown, with the reasons.
 The adversarial fixtures in `test/test_integrity.ml` (a wash trader, a self-trader, a pair
 trading with each other, five sybil wallets placing the same orders, a front-runner, an
-account filled 3% off the market) are all flagged; 20 independent noise traders and two
-honest traders who react to the same ten announcements are not. Limits: counterparties are
+account filled 3% off the market) are all flagged; 20 independent noise traders, two
+honest traders who react to the same ten announcements, and a closed market of 30
+accounts matched at random (every one a counterparty of the others) are not. On a mainnet
+collection of 34 leaders (146,761 fills, hl-leaderboard, read only) the only flags are
+three accounts first seen within 40 minutes (info). The first thresholds (3 shared trades,
+shifts of hours, 50 bps within 2 s) excluded all 43 accounts of a simulator run and one
+mainnet leader sweeping a small perp; the defaults above come from those runs. Limits: counterparties are
 only visible among watched accounts, front-running needs a trade flow (hl-leaderboard does
 not collect one yet), and Hyperliquid does not publish account creation times (the first
 point of the portfolio curve stands in).
