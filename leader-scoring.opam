@@ -12,6 +12,7 @@ homepage: "https://github.com/winterchill-trading/leader-scoring"
 bug-reports: "https://github.com/winterchill-trading/leader-scoring/issues"
 depends: [
   "ocaml" {>= "5.2"}
+  "oxcaml"
   "dune" {>= "3.17"}
   "core"
   "ppx_jane"

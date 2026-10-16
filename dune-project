@@ -24,6 +24,7 @@
  (depends
   (ocaml
    (>= 5.2))
+  oxcaml
   dune
   core
   ppx_jane
@@ -40,6 +41,7 @@
  (depends
   (ocaml
    (>= 5.2))
+  oxcaml
   dune
   core
   core_unix
