@@ -7,7 +7,41 @@ type t =
   ; copyability : Copyability.t option
   ; alerts : Alerts.Alert.t list
   ; max_cost_bps : float
+  ; persistence : Persistence.t option
+  ; stats : Backtest_stats.Report.t option
+  ; integrity : Integrity.Flag.t list
   }
+
+module Universe = struct
+  type t =
+    { persistence : Persistence.t
+    ; stats : Leader_stats.Universe.t
+    ; flagged : int
+    ; excluded : int
+    ; policy : Integrity.Policy.t
+    }
+
+  let to_json t =
+    `Assoc
+      [ "persistence", Persistence.to_json t.persistence
+      ; "stats", Leader_stats.universe_json t.stats
+      ; ( "integrity"
+        , `Assoc
+            [ "flagged", `Int t.flagged
+            ; "excluded", `Int t.excluded
+            ; ( "policy"
+              , `Assoc
+                  [ ( "exclude"
+                    , `List
+                        (List.map t.policy.exclude ~f:(fun k ->
+                           `String (Integrity.Kind.to_string k))) )
+                  ; ( "min_severity"
+                    , `String (Alerts.Severity.to_string t.policy.min_severity) )
+                  ] )
+            ] )
+      ]
+  ;;
+end
 
 let alerts_config (tr : Track_record.t) =
   let d = Alerts.Config.default in
@@ -38,15 +72,55 @@ let create
         else Some (Copyability.estimate ~config:copy_config ~books record))
   ; alerts = Alerts.scan (alerts_config record) record
   ; max_cost_bps = copy_config.max_cost_bps
+  ; persistence = None
+  ; stats = None
+  ; integrity = []
   }
 ;;
 
-let rank ?(config = Score.Config.default) reports =
+let analyse
+  ?persistence
+  ?stats
+  ?(integrity = String.Map.empty)
+  ?(policy = Integrity.Policy.default)
+  reports
+  =
+  let records = List.map reports ~f:(fun r -> r.record) in
+  let p = Persistence.run ?config:persistence records in
+  let s = Leader_stats.run ?config:stats records in
+  let reports =
+    List.map reports ~f:(fun r ->
+      { r with
+        persistence = Some p
+      ; stats = Map.find s.reports r.record.account
+      ; integrity = Map.find integrity r.record.account |> Option.value ~default:[]
+      })
+  in
+  ( { Universe.persistence = p
+    ; stats = s.universe
+    ; flagged = List.count reports ~f:(fun r -> not (List.is_empty r.integrity))
+    ; excluded =
+        List.count reports ~f:(fun r ->
+          not (List.is_empty (Integrity.Policy.reasons policy r.integrity)))
+    ; policy
+    }
+  , reports )
+;;
+
+let rank ?(config = Score.Config.default) ?(policy = Integrity.Policy.default) reports =
   let by_account =
     List.map reports ~f:(fun r -> r.record.account, r)
     |> String.Map.of_alist_reduce ~f:(fun a _ -> a)
   in
+  let excluded =
+    List.filter_map reports ~f:(fun r ->
+      match Integrity.Policy.reasons policy r.integrity with
+      | [] -> None
+      | reasons -> Some (r.record.account, reasons))
+    |> String.Map.of_alist_reduce ~f:(fun a _ -> a)
+  in
   Score.rank
+    ~excluded
     config
     (List.map reports ~f:(fun r ->
        ( r.record.account
@@ -157,6 +231,15 @@ let to_json ?(max_points = 400) t ranked =
       , Option.value_map t.copyability ~default:`Null ~f:(fun c ->
           capacity_json c ~max_cost_bps:t.max_cost_bps) )
     ; "alerts", `List (List.map t.alerts ~f:alert_json)
+    ; ( "persistence"
+      , match t.persistence with
+        | None -> `Null
+        | Some p ->
+          (match Persistence.leader p tr.account with
+           | None -> `Null
+           | Some l -> Persistence.leader_json p l) )
+    ; "stats", Option.value_map t.stats ~default:`Null ~f:Leader_stats.leader_json
+    ; "integrity", `List (List.map t.integrity ~f:Integrity.flag_json)
     ]
 ;;
 
