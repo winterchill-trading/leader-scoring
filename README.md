@@ -11,7 +11,7 @@ Two opam packages:
 
 | Package | Library | What it needs |
 | --- | --- | --- |
-| `leader-scoring` | `Leader_scoring` | venue neutral; `core`, `async_kernel`, `yojson`, `market-data` (for L2 books) |
+| `leader-scoring` | `Leader_scoring` | venue neutral; `core`, `async_kernel`, `yojson`, `market-data` (for L2 books), `backtest-stats` |
 | `leader-scoring-hl` | `Leader_scoring_hl`, binary `leader-scoring` | the Hyperliquid source over `hl-client`, read only |
 
 **Read only.** The Hyperliquid source sends `POST /info` requests (`userFillsByTime`,
@@ -60,7 +60,10 @@ each leader's page.
 | `Copyability` | Slippage per follower size from book depth, capacity curve |
 | `Alerts` | Drawdown, leverage, style, frequency and liquidation alerts |
 | `Synthetic`, `Dataset`, `Model` | Training data, the forward label, the exported model's scorer |
-| `Report` | Everything a leader page shows, and its JSON |
+| `Persistence` | Does a ranking persist into the next window: rank correlation, transitions, decay, random-pick baseline |
+| `Leader_stats` | PSR, DSR and minimum track record per leader; PBO and SPA across the universe (backtest-stats) |
+| `Integrity` | Flags for wash and self trades, counterparties, co-trading clusters, front-running, creation bursts, off-book fills |
+| `Report` | Everything a leader page shows, and its JSON; `analyse` adds the universe checks |
 | `Stats` | Quantiles, weighted quantiles, rank correlation |
 | `Leader_scoring_hl.Hl_source`, `Raw`, `Hl_decode`, `Hl_market` | Hyperliquid fetch, recordings, decoders, books and open interest |
 
@@ -196,6 +199,103 @@ days by default; a sixth and a half of the record for short records):
 - a liquidation fill in the recent window (critical).
 
 `Alerts.scan` replays this along the record and keeps the moment each alert turned on.
+
+## Persistence
+
+A "top leaders" list is only worth showing if the order it shows says something about the
+next period. `Persistence.run` cuts time into windows on a common grid (multiples of the
+window since the epoch), ranks the leaders that cover each window on a formation measure
+(window return, per-bar Sharpe ratio, or the composite score of the window's metrics), and
+compares with the window after it:
+
+- **Rank correlation**: Spearman between the formation measure in window `k` and the
+  outcome measure in `k + 1`, averaged over windows, with a bootstrap interval (leaders
+  resampled within each window), a t statistic over windows and the mean of the last
+  third of the windows (a ranking that used to work and stopped is `fading`).
+- **Transition matrix**: how many leaders move from formation quintile `i` to outcome
+  quintile `j`, and the share of the top quintile still in the top half.
+- **Decay**: the mean rank correlation `h = 1 .. 6` windows ahead.
+- **Random-selection baseline**: the mean next-window return of the top `K` leaders against
+  the same for `K` leaders drawn at random from the same window (1000 draws, each averaged
+  over every window): the percentile of the top `K` among the draws and
+  `p = (1 + draws at or above) / (1 + draws)`. Returns are capped at 100% a window, since a
+  curve that starts from a nearly empty account shows thousands of percent no follower gets.
+
+A ranking is **persistent** when the interval lies above zero and the top `K` beat at least
+95% of the random draws. hl-leaderboard publishes this next to its ranking; a page should
+not call anyone "top" while it is false.
+
+`leader-scoring persistence -synthetic 1500 -days 400 -top-k 100` (30-day windows, daily
+bars, Sharpe against Sharpe) and `leader-scoring persistence -replay data/mainnet-portfolios
+-window-days 91 -bar-days 7 -common-bars 52 -top-k 10` (the all-time `portfolio` curves of
+the 300 largest mainnet accounts by all-time pnl, read only, 2026-10-15; the curves are
+sampled weekly, so 13-week windows of weekly bars):
+
+| | Synthetic (1500 leaders, 11 periods) | Mainnet (282 leaders, 10 periods) |
+| --- | --- | --- |
+| Rank correlation, next window | 0.047 [0.030, 0.065], t 3.2, positive in 73% | 0.051 [-0.025, 0.120], t 0.7, positive in 60% |
+| Decay, 1 to 6 windows ahead | 0.047, 0.043, 0.034, 0.018, 0.014, 0.040 | 0.051, 0.039, 0.039, 0.104, 0.136, -0.087 |
+| Top quintile still in the top half | 52% | 49% |
+| Top K next-window return vs random | K 100: +0.56% vs -1.50% (p05 -2.77%, p95 -0.23%), percentile 0.996 | K 10: 33.7% vs 33.8% (p05 26.7%, p95 40.4%), percentile 0.48 |
+| Persistent | yes | no |
+
+Other rules on the mainnet curves are worse, not better: ranking on window return gives a
+rank correlation of -0.172 [-0.254, -0.071] (last quarter's winners lag), and the top 30 by
+Sharpe earned 27.4% against 33.8% for random picks (percentile 0.003). On synthetic leaders
+(a hidden edge that wanders and changes regime) the Sharpe ranking persists weakly and its
+top 100 beat random picks, while ranking on raw return does not (percentile 0.05), and the
+composite score persists about as well as Sharpe (0.029 [0.014, 0.046], percentile 0.994).
+Read honestly: on this mainnet sample, which is itself selected by past success, no ranking
+we tried says anything about the next quarter.
+
+## Selection statistics
+
+Picking the best of many leaders is picking the best of many backtests. `Leader_stats.run`
+computes, per leader over its bar returns, a backtest-stats `Report`: the probabilistic
+Sharpe ratio (PSR), the deflated Sharpe ratio (DSR, with the number of leaders as the number
+of trials and the variance of their Sharpe ratios), and the minimum track record length for
+95% confidence. Across the leaders that cover a common window it computes the probability
+of backtest overfitting (PBO, combinatorially symmetric cross-validation) and the SPA test,
+and judges each leader with a policy (PSR and DSR at least 0.95, PBO at most 0.5).
+
+| | Synthetic (1500 leaders, daily) | Mainnet (299 leaders, weekly) |
+| --- | --- | --- |
+| PSR at least 0.95 | 106 | 237 |
+| DSR at least 0.95 | 0 | 2 |
+| Median PSR, DSR | 0.43, 0.00 | 0.99, 0.03 |
+| Common window | 1380 leaders, 90 days | 92 leaders, 52 weeks |
+| PBO | 0.41 | 0.14 |
+| SPA p-value (best leader) | 0.012 | 0.20 |
+
+The mainnet PSRs are high because the sample is the 300 accounts with the largest all-time
+pnl: survivors, whose curves mostly rise. The DSR takes the selection into account and
+leaves two.
+
+## Integrity
+
+`Integrity.check` looks for leaders that are manipulated or cannot be copied, from their
+fills (and, when given, a flow of trades, recorded quotes and account creation times). Each
+check returns a typed flag with its evidence:
+
+| Flag | Evidence | Default threshold |
+| --- | --- | --- |
+| `self_trade` | the same trade id, coin, time and price on both sides of one account | any |
+| `wash_trade` | opposite fills within 1 s at one price (1 bp) and size (10%) | 5 pairs and 20% of volume |
+| `counterparty` | watched accounts on the two sides of the same trades, and their group | 3 trades and 5% of volume |
+| `co_trading` | orders in one coin and side within 60 s of another account's, against the count with one side shifted by 1 to 3 hours; clusters are connected components | 20 matches, similarity 0.3, 3 times the shifted count |
+| `front_running` | orders followed within 5 s by 50k USD of net same-side flow, against shifted times | 20 orders, binomial z 3, twice the base rate |
+| `creation_burst` | accounts first seen within a day of each other | 3 accounts; a warning only when they are also linked |
+| `off_book_price` | fills more than 50 bps outside quotes within 2 s or other accounts' fills then | 3 fills and 10% |
+
+`Integrity.Policy.default` takes every flag of severity warning or above out of the
+composite ranking (`Report.rank`): the leader is still scored and shown, with the reasons.
+The adversarial fixtures in `test/test_integrity.ml` (a wash trader, a self-trader, a pair
+trading with each other, five sybil wallets placing the same orders, a front-runner, an
+account filled 3% off the market) are all flagged; 20 independent noise traders and two
+honest traders who react to the same ten announcements are not. Limits: counterparties are
+only visible among watched accounts, front-running needs a trade flow (hl-leaderboard does
+not collect one yet), and Hyperliquid does not publish account creation times (the first
+point of the portfolio curve stands in).
 
 ## Learned score
 
