@@ -92,7 +92,7 @@ let self_trader rs =
 (* two accounts on the two sides of the same trades *)
 let pair rs =
   let shared =
-    List.init 8 ~f:(fun _ ->
+    List.init 15 ~f:(fun _ ->
       let t = random_time rs in
       incr next_id;
       t, !next_id)
@@ -192,10 +192,10 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
     (List.length noise);
   [%expect {|
     front    front_running   critical 100% of orders followed within 5s by 50k USD or more of same-side flow (0% at other times)
-    offbook  off_book_price  critical 12 of 12 checked fills more than 50 bps outside the market (worst 295 bps)
-    pair-a   counterparty    critical 8 trades against 1 other watched account (80% of volume)
-    pair-b   counterparty    critical 8 trades against 1 other watched account (80% of volume)
-    self     self_trade      critical 4 trades with itself (77% of volume)
+    offbook  off_book_price  critical 12 of 12 checked fills more than 200 bps outside the market (worst 295 bps)
+    pair-a   counterparty    critical 15 trades against 1 other watched account (88% of volume)
+    pair-b   counterparty    critical 15 trades against 1 other watched account (88% of volume)
+    self     self_trade      critical 4 trades with itself (79% of volume)
     sybil-0  co_trading      critical trades in step with 4 other watched accounts (cluster of 5)
     sybil-0  creation_burst  warning  one of 5 accounts first seen within 4h, and linked by its trades
     sybil-1  co_trading      critical trades in step with 4 other watched accounts (cluster of 5)
@@ -206,7 +206,7 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
     sybil-3  creation_burst  warning  one of 5 accounts first seen within 4h, and linked by its trades
     sybil-4  co_trading      critical trades in step with 4 other watched accounts (cluster of 5)
     sybil-4  creation_burst  warning  one of 5 accounts first seen within 4h, and linked by its trades
-    wash     wash_trade      critical 30 buy and sell pairs at one price within 1s (57% of volume)
+    wash     wash_trade      critical 30 buy and sell pairs at one price within 1s (52% of volume)
     honest traders flagged: 0 of 22
     |}];
   let reasons account =
@@ -217,7 +217,7 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
   print_s [%message (reasons "wash" : string list) (reasons "noise-00" : string list)];
   [%expect {|
     (("reasons \"wash\""
-      ("integrity: 30 buy and sell pairs at one price within 1s (57% of volume)"))
+      ("integrity: 30 buy and sell pairs at one price within 1s (52% of volume)"))
      ("reasons \"noise-00\"" ()))
     |}]
 ;;
