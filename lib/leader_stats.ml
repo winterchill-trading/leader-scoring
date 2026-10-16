@@ -55,10 +55,13 @@ type t =
   }
 
 let simple_returns e =
+  (* a rebuilt curve can cross zero (losses beyond the equity, or an assumed starting
+     equity); backtest-stats takes returns above -1, so a wipe-out counts as -99.99% and
+     the bars after it, from a non-positive equity, are left out *)
   Array.filter_mapi e ~f:(fun i x ->
     if i = 0 || Float.( <= ) e.(i - 1) 0. || not (Float.is_finite x)
     then None
-    else Some ((x /. e.(i - 1)) -. 1.))
+    else Some (Float.max (-0.9999) ((x /. e.(i - 1)) -. 1.)))
 ;;
 
 let returns (r : Track_record.t) ~bar = simple_returns (Track_record.bars r ~period:bar)

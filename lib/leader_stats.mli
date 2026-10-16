@@ -59,7 +59,8 @@ type t =
   }
 
 (** Simple returns between consecutive end-of-bar equities ({!Track_record.bars}); bars
-    whose starting equity is not positive are left out. *)
+    whose starting equity is not positive are left out and a fall below zero counts as
+    -99.99%. *)
 val returns : Track_record.t -> bar:Time_ns.Span.t -> float array
 
 val run : ?config:Config.t -> Track_record.t list -> t
