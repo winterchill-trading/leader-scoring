@@ -1,32 +1,7 @@
 open! Core
 open Leader_scoring
 
-(* Leaders with a fixed edge (planted skill) or none (luck), same market and style. *)
-let universe ~skill ~leaders ~days =
-  let market = Synthetic.market ~seed:5 ~coins:6 ~days in
-  List.init leaders ~f:(fun i ->
-    let mu =
-      if skill
-      then -0.1 +. (0.2 *. Float.of_int i /. Float.of_int (leaders - 1))
-      else 0.
-    in
-    Synthetic.leader
-      ~seed:(1000 + i)
-      ~start:Helpers.t0
-      ~market
-      ~account:(sprintf "leader-%03d" i)
-      { mu
-      ; wander = 0.
-      ; regime_days = 1e6
-      ; leverage = 2.
-      ; trades_per_day = 2.
-      ; hold_days = 2.
-      ; long_bias = 0.
-      ; coins = 3
-      ; martingale = false
-      }
-    |> Track_record.build)
-;;
+let universe = Helpers.planted
 
 let config = { Persistence.Config.default with bootstrap_samples = 300; random_draws = 300 }
 let r3 x = Float.round_decimal x ~decimal_digits:3

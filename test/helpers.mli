@@ -32,3 +32,8 @@ val history
 
 (** Six decimals, so expect output does not depend on the last bits. *)
 val round : float -> float
+
+(** [leaders] synthetic leaders over [days] trading one market in the same style: with
+    [skill] their edges are fixed and spread from -0.1 to 0.1 (hit rates 40% to 60%),
+    without it every edge is zero, so any ranking is luck. *)
+val planted : skill:bool -> leaders:int -> days:int -> Track_record.t list
