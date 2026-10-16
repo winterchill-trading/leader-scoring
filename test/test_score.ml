@@ -72,7 +72,8 @@ let%expect_test "an excluded leader is scored, not ranked, and leaves the pool" 
   in
   let excluded = String.Map.singleton "c" [ "integrity: trades with itself" ] in
   print (Score.rank ~excluded config universe);
-  [%expect {|
+  [%expect
+    {|
     a      score=100.0 rank=1 pct=1.00
     b      score=  0.0 rank=2 pct=0.00
     c      score= 60.0 rank=- pct=- integrity: trades with itself

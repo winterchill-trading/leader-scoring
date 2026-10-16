@@ -59,8 +59,9 @@ let%expect_test "report JSON of two synthetic leaders, ranked" =
     |}]
 ;;
 
-let%expect_test "analyse: persistence, stats and integrity on every report; flagged leaders \
-                 leave the ranking" =
+let%expect_test "analyse: persistence, stats and integrity on every report; flagged \
+                 leaders leave the ranking"
+  =
   let universe = Synthetic.universe ~seed:3 ~start:Helpers.t0 ~leaders:12 ~days:120 in
   let reports = List.map universe ~f:(fun (h, _) -> Report.create h) in
   let flag account =
@@ -70,7 +71,12 @@ let%expect_test "analyse: persistence, stats and integrity on every report; flag
     ; message = "planted"
     ; evidence =
         Wash_trade
-          { pairs = 9; notional = 1.; share_of_volume = 0.3; window_ms = 1000; examples = [] }
+          { pairs = 9
+          ; notional = 1.
+          ; share_of_volume = 0.3
+          ; window_ms = 1000
+          ; examples = []
+          }
     }
   in
   let integrity = String.Map.singleton "synthetic-0004" [ flag "synthetic-0004" ] in
@@ -82,7 +88,8 @@ let%expect_test "analyse: persistence, stats and integrity on every report; flag
         ; bootstrap_samples = 100
         ; random_draws = 100
         }
-      ~stats:{ Leader_stats.Config.default with bootstrap_samples = 100; common_bars = 60 }
+      ~stats:
+        { Leader_stats.Config.default with bootstrap_samples = 100; common_bars = 60 }
       ~integrity
       reports
   in
@@ -92,7 +99,8 @@ let%expect_test "analyse: persistence, stats and integrity on every report; flag
     [%message
       ""
         ~universe_keys:(keys json : string list)
-        ~persistence_periods:(member "persistence" json |> member "periods" |> to_int : int)
+        ~persistence_periods:
+          (member "persistence" json |> member "periods" |> to_int : int)
         ~stats_leaders:(member "stats" json |> member "leaders" |> to_int : int)
         ~excluded:(universe.excluded : int)];
   let ranked = Report.rank reports in
@@ -110,7 +118,8 @@ let%expect_test "analyse: persistence, stats and integrity on every report; flag
                |> member "windows"
                |> Yojson.Safe.to_string
                : string)]);
-  [%expect {|
+  [%expect
+    {|
     ((universe_keys (persistence stats integrity)) (persistence_periods 2)
      (stats_leaders 12) (excluded 1))
     (synthetic-0004 (reasons ("integrity: planted")) (stats true)

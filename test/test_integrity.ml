@@ -26,18 +26,11 @@ let next_id = ref 0
 let fill ?id ?px ~time ~coin sz =
   incr next_id;
   let id = Option.value id ~default:!next_id in
-  Helpers.fill
-    ~time
-    ~coin
-    ~px:(Option.value px ~default:(price coin time))
-    sz
+  Helpers.fill ~time ~coin ~px:(Option.value px ~default:(price coin time)) sz
   |> fun f -> { f with Fill.id }
 ;;
 
-let history account fills =
-  { (Helpers.history fills) with account }
-;;
-
+let history account fills = { (Helpers.history fills) with account }
 let random_time rs = Helpers.at (Random.State.float rs days)
 
 let noise rs i =
@@ -60,19 +53,23 @@ let news rs =
     ; fills =
         h.fills
         @ List.map events ~f:(fun t ->
-          fill ~time:(Time_ns.add t (Time_ns.Span.of_sec (Random.State.float rs 30.))) ~coin:"BTC" 1.)
+          fill
+            ~time:(Time_ns.add t (Time_ns.Span.of_sec (Random.State.float rs 30.)))
+            ~coin:"BTC"
+            1.)
     })
 ;;
 
 let wash rs =
   let pairs =
-    List.concat (List.init 30 ~f:(fun _ ->
-      let t = random_time rs in
-      let coin = coins.(Random.State.int rs 3) in
-      let px = price coin t in
-      [ fill ~time:t ~coin ~px 1.
-      ; fill ~time:(Time_ns.add t (Time_ns.Span.of_ms 200.)) ~coin ~px (-1.)
-      ]))
+    List.concat
+      (List.init 30 ~f:(fun _ ->
+         let t = random_time rs in
+         let coin = coins.(Random.State.int rs 3) in
+         let px = price coin t in
+         [ fill ~time:t ~coin ~px 1.
+         ; fill ~time:(Time_ns.add t (Time_ns.Span.of_ms 200.)) ~coin ~px (-1.)
+         ]))
   in
   let honest = List.init 40 ~f:(fun _ -> fill ~time:(random_time rs) ~coin:"BTC" 0.5) in
   history "wash" (pairs @ honest)
@@ -80,13 +77,16 @@ let wash rs =
 
 let self_trader rs =
   let crossed =
-    List.concat (List.init 4 ~f:(fun _ ->
-      let t = random_time rs in
-      incr next_id;
-      let id = !next_id in
-      [ fill ~id ~time:t ~coin:"ETH" 2.; fill ~id ~time:t ~coin:"ETH" (-2.) ]))
+    List.concat
+      (List.init 4 ~f:(fun _ ->
+         let t = random_time rs in
+         incr next_id;
+         let id = !next_id in
+         [ fill ~id ~time:t ~coin:"ETH" 2.; fill ~id ~time:t ~coin:"ETH" (-2.) ]))
   in
-  history "self" (crossed @ List.init 30 ~f:(fun _ -> fill ~time:(random_time rs) ~coin:"SOL" 3.))
+  history
+    "self"
+    (crossed @ List.init 30 ~f:(fun _ -> fill ~time:(random_time rs) ~coin:"SOL" 3.))
 ;;
 
 (* two accounts on the two sides of the same trades *)
@@ -110,7 +110,9 @@ let pair rs =
 let sybils rs =
   let signals =
     List.init 60 ~f:(fun _ ->
-      random_time rs, coins.(Random.State.int rs 3), if Random.State.bool rs then 1. else -1.)
+      ( random_time rs
+      , coins.(Random.State.int rs 3)
+      , if Random.State.bool rs then 1. else -1. ))
   in
   List.init 5 ~f:(fun i ->
     history
@@ -126,9 +128,7 @@ let sybils rs =
 (* buys BTC and the flow piles in right after, 40 times; plus background flow *)
 let front_runner rs =
   let entries = List.init 40 ~f:(fun _ -> random_time rs) in
-  let h =
-    history "front" (List.map entries ~f:(fun t -> fill ~time:t ~coin:"BTC" 0.2))
-  in
+  let h = history "front" (List.map entries ~f:(fun t -> fill ~time:t ~coin:"BTC" 0.2)) in
   let follower_flow =
     List.map entries ~f:(fun t ->
       { Integrity.Flow.time = Time_ns.add t (Time_ns.Span.of_sec 2.)
@@ -140,7 +140,8 @@ let front_runner rs =
     List.init 2000 ~f:(fun _ ->
       { Integrity.Flow.time = random_time rs
       ; coin = "BTC"
-      ; notional = (if Random.State.bool rs then 1. else -1.) *. Random.State.float rs 80_000.
+      ; notional =
+          (if Random.State.bool rs then 1. else -1.) *. Random.State.float rs 80_000.
       })
   in
   h, follower_flow @ background
@@ -157,7 +158,8 @@ let off_book rs =
   let h =
     history
       "offbook"
-      (List.map times ~f:(fun t -> fill ~time:t ~coin:"ETH" ~px:(price "ETH" t *. 1.03) 1.))
+      (List.map times ~f:(fun t ->
+         fill ~time:t ~coin:"ETH" ~px:(price "ETH" t *. 1.03) 1.))
   in
   h, quotes
 ;;
@@ -173,7 +175,8 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
   in
   let created =
     (* the sybils were made the same afternoon; the noise traders over a year *)
-    List.mapi noise ~f:(fun i h -> h.account, Helpers.at (-400. +. (20. *. Float.of_int i)))
+    List.mapi noise ~f:(fun i h ->
+      h.account, Helpers.at (-400. +. (20. *. Float.of_int i)))
     @ List.mapi sybils ~f:(fun i h -> h.account, Helpers.at ~h:(Float.of_int i) (-30.))
     |> String.Map.of_alist_exn
   in
@@ -190,7 +193,8 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
     "honest traders flagged: %d of %d\n"
     (List.count noise ~f:(fun h -> Map.mem flags h.account))
     (List.length noise);
-  [%expect {|
+  [%expect
+    {|
     front    front_running   critical 100% of orders followed within 5s by 50k USD or more of same-side flow (0% at other times)
     offbook  off_book_price  critical 12 of 12 checked fills more than 200 bps outside the market (worst 295 bps)
     pair-a   counterparty    critical 15 trades against 1 other watched account (88% of volume)
@@ -215,7 +219,8 @@ let%expect_test "every planted pattern is flagged, independent noise traders are
       (Map.find flags account |> Option.value ~default:[])
   in
   print_s [%message (reasons "wash" : string list) (reasons "noise-00" : string list)];
-  [%expect {|
+  [%expect
+    {|
     (("reasons \"wash\""
       ("integrity: 30 buy and sell pairs at one price within 1s (52% of volume)"))
      ("reasons \"noise-00\"" ()))
@@ -239,7 +244,8 @@ let%expect_test "evidence JSON" =
   let flags = Integrity.check [ h ] in
   List.iter (Map.find_exn flags "self") ~f:(fun f ->
     print_endline (Yojson.Safe.pretty_to_string (Integrity.flag_json f)));
-  [%expect {|
+  [%expect
+    {|
     {
       "kind": "self_trade",
       "severity": "critical",
@@ -270,8 +276,8 @@ let%expect_test "evidence JSON" =
 ;;
 
 (* A simulator's market: every trade has two watched accounts on its two sides, so all of
-   them are counterparties of each other and trade in the same seconds. Random matching
-   is not a cluster and not a sybil pair. *)
+   them are counterparties of each other and trade in the same seconds. Random matching is
+   not a cluster and not a sybil pair. *)
 let%expect_test "a closed market of honest accounts is not flagged" =
   let rs = Random.State.make [| 11 |] in
   let accounts = Array.init 30 ~f:(sprintf "trader-%02d") in
@@ -288,7 +294,9 @@ let%expect_test "a closed market of honest accounts is not flagged" =
     fills.(taker) := fill ~id ~time:t ~coin (side *. sz) :: !(fills.(taker));
     fills.(maker) := fill ~id ~time:t ~coin (-.side *. sz) :: !(fills.(maker))
   done;
-  let histories = Array.to_list (Array.mapi accounts ~f:(fun i a -> history a !(fills.(i)))) in
+  let histories =
+    Array.to_list (Array.mapi accounts ~f:(fun i a -> history a !(fills.(i))))
+  in
   let flags = Integrity.check histories in
   printf "flagged: %d of 30\n" (Map.length flags);
   Map.iteri flags ~f:(fun ~key ~data ->
