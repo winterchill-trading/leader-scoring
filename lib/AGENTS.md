@@ -9,5 +9,10 @@ The venue-neutral library `Leader_scoring`. Data flows
 - `Metric.name` strings are part of the model's feature schema and of JSON consumers
   (hl-leaderboard, hl-copy-api): never rename one.
 - Keep `Synthetic` deterministic for a seed: the training data depends on it.
+- `Persistence`, `Leader_stats` and `Integrity` work on the whole universe;
+  `Report.analyse` stores each leader's part in its report. Seeds are fixed so the
+  bootstrap and random draws are reproducible.
+- New `Integrity.Kind` constructors are JSON strings consumers match on: append, never
+  rename.
 
 Build and test from the repository root as in [../AGENTS.md](../AGENTS.md).

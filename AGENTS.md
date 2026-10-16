@@ -14,10 +14,10 @@ Workspace-wide rules, the repository map and the CI model are in
 
 | Path | Holds |
 | --- | --- |
-| `lib/` | `leader-scoring` (`Leader_scoring`): inputs, `Track_record`, `Metrics`, `Score`, `Copyability`, `Alerts`, `Synthetic`, `Dataset`, `Model`, `Report` ([lib/AGENTS.md](lib/AGENTS.md)) |
+| `lib/` | `leader-scoring` (`Leader_scoring`): inputs, `Track_record`, `Metrics`, `Score`, `Copyability`, `Alerts`, `Persistence`, `Leader_stats`, `Integrity`, `Synthetic`, `Dataset`, `Model`, `Report` ([lib/AGENTS.md](lib/AGENTS.md)) |
 | `hl/` | `leader-scoring-hl`: Hyperliquid source, raw recordings, decoders, books and open interest ([hl/AGENTS.md](hl/AGENTS.md)) |
 | `hl/test/` | Decoding tests over recorded mainnet and hl-sim answers in `hl/test/fixtures/` |
-| `bin/` | The `leader-scoring` CLI: `record`, `score`, `portfolios`, `dataset`, `metrics` ([bin/AGENTS.md](bin/AGENTS.md)) |
+| `bin/` | The `leader-scoring` CLI: `record`, `score`, `portfolios`, `dataset`, `metrics`, `persistence` ([bin/AGENTS.md](bin/AGENTS.md)) |
 | `test/` | Expect tests and Quickcheck properties of the core ([test/AGENTS.md](test/AGENTS.md)) |
 | `bench/` | core_bench of every scoring step ([bench/AGENTS.md](bench/AGENTS.md)) |
 | `python/` | Training, walk-forward evaluation and export of the learned score ([python/AGENTS.md](python/AGENTS.md)) |
@@ -62,8 +62,9 @@ Training (Python 3.12+, `uv`): see `python/AGENTS.md`.
 ## Dependencies and dependents
 
 - `leader-scoring` depends on `market-data` (and through it `fixed-decimal`,
-  `exchange-core`, `parquet`); `leader-scoring-hl` adds `hl-protocol`, `venue-net` and
-  `hl-client`. CI pins them in that order.
+  `exchange-core`, `parquet`) and `backtest-stats`; `leader-scoring-hl` adds
+  `hl-protocol`, `venue-net` and `hl-client`. CI pins them in that order. Every repository
+  that pins `leader-scoring` must pin `backtest-stats` before it.
 - Used by `../hl-leaderboard` (`Scoring`: reports per leader), and through it by
   `../hl-copy-api` and `../hl-copy-web`; `../hl-copy-core`'s backtest job pins it because
   it builds `hl-leaderboard`.
@@ -87,6 +88,11 @@ the shared workflow from `infra`. Check with one `gh run list --limit 1` and at 
   never go flat, so without seeding their pnl reads zero.
 - Annualized metrics of minute bars (simulator runs) are huge; compare them only among
   records with the same bar.
+- `Persistence` and `Leader_stats` are universe statistics: run them once over every
+  leader (`Report.analyse`), never per leader. Mainnet `portfolio` all-time curves are
+  sampled weekly; use weekly bars and windows of several weeks for them.
+- Integrity thresholds were chosen against honest-trader fixtures (`test/test_integrity.ml`);
+  a change that flags a noise or news trader there is a regression.
 - Dataset cutoffs must sit on one grid (multiples of the step since the epoch), or each
   account gets its own cutoffs and cross-sectional correlations fall apart.
 - `hl-sim` answers `userFunding` and `metaAndAssetCtxs` with 400; the source treats that
