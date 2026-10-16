@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `Persistence`: does a ranking persist into the next window (rank correlation with a
+  bootstrap interval, transition matrix, decay over horizons, top-K against random picks);
+  per-leader window percentiles.
+- `Leader_stats`: backtest-stats reports per leader (PSR, DSR with the leaders as trials,
+  minimum track record) and PBO, SPA and the reality check across the universe.
+- `Integrity`: typed flags with evidence for self and wash trades, counterparties among
+  watched accounts, co-trading clusters, front-running of a trade flow, creation bursts and
+  off-book fill prices; `Integrity.Policy` decides which flags exclude a leader.
+- `Report.t` gains `persistence`, `stats` and `integrity`; `Report.analyse` fills them and
+  `Report.Universe` holds the universe-level results. `Report.rank` takes `?policy` and
+  leaves excluded leaders unranked; `Score.rank` takes `?excluded`.
+- CLI: `leader-scoring persistence` over synthetic leaders or recordings.
+
+### Fixed
+
+- `History.normalize` kept only one side of a self trade (same id, time and coin).
+
 ## 0.1.0
 
 First version prepared for opam; not yet published.
