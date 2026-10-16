@@ -268,3 +268,30 @@ let%expect_test "evidence JSON" =
     }
     |}]
 ;;
+
+(* A simulator's market: every trade has two watched accounts on its two sides, so all of
+   them are counterparties of each other and trade in the same seconds. Random matching
+   is not a cluster and not a sybil pair. *)
+let%expect_test "a closed market of honest accounts is not flagged" =
+  let rs = Random.State.make [| 11 |] in
+  let accounts = Array.init 30 ~f:(sprintf "trader-%02d") in
+  let fills = Array.map accounts ~f:(fun _ -> ref []) in
+  for _ = 1 to 6000 do
+    let t = random_time rs in
+    let coin = coins.(Random.State.int rs 3) in
+    let taker = Random.State.int rs 30 in
+    let maker = (taker + 1 + Random.State.int rs 29) % 30 in
+    let side = if Random.State.bool rs then 1. else -1. in
+    let sz = 0.1 +. Random.State.float rs 1. in
+    incr next_id;
+    let id = !next_id in
+    fills.(taker) := fill ~id ~time:t ~coin (side *. sz) :: !(fills.(taker));
+    fills.(maker) := fill ~id ~time:t ~coin (-.side *. sz) :: !(fills.(maker))
+  done;
+  let histories = Array.to_list (Array.mapi accounts ~f:(fun i a -> history a !(fills.(i)))) in
+  let flags = Integrity.check histories in
+  printf "flagged: %d of 30\n" (Map.length flags);
+  Map.iteri flags ~f:(fun ~key ~data ->
+    List.iter data ~f:(fun (f : Integrity.Flag.t) -> printf "%s %s\n" key f.message));
+  [%expect {| flagged: 0 of 30 |}]
+;;
