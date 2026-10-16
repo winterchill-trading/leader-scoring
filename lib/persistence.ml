@@ -26,6 +26,7 @@ module Config = struct
     ; min_leaders : int
     ; bootstrap_samples : int
     ; random_draws : int
+    ; return_cap : float
     ; level : float
     ; seed : int
     }
@@ -43,6 +44,7 @@ module Config = struct
       min_leaders = 10
     ; bootstrap_samples = 1000
     ; random_draws = 1000
+    ; return_cap = 1.
     ; level = 0.95
     ; seed = 0
     }
@@ -219,7 +221,9 @@ let windows (config : Config.t) records =
           (if phys_equal config.outcome config.formation
            then formation
            else measure config.outcome)
-      ; return = measure Return
+      ; return =
+          Map.map (measure Return) ~f:(fun r ->
+            Float.clamp_exn r ~min:(-1.) ~max:config.return_cap)
       })
     |> Array.of_list
 ;;
@@ -385,22 +389,24 @@ let run ?(config = Config.default) records =
     | [] -> None
     | rows ->
       let rows = List.map rows ~f:snd in
-      let k =
-        List.fold rows ~init:config.top_k ~f:(fun k r -> Int.min k (Array.length r / 2))
-        |> Int.max 1
-      in
+      (* each window picks [top_k], or half its participants when it has fewer than
+         twice that *)
+      let k_of r = Int.max 1 (Int.min config.top_k (Array.length r / 2)) in
       let top =
-        List.map rows ~f:(top_k_mean ~k) |> Array.of_list |> Stats.mean |> Option.value_exn
+        List.map rows ~f:(fun r -> top_k_mean ~k:(k_of r) r)
+        |> Array.of_list
+        |> Stats.mean
+        |> Option.value_exn
       in
-      let returns = List.map rows ~f:(fun r -> column r (fun (_, _, x) -> x)) in
+      let returns = List.map rows ~f:(fun r -> k_of r, column r (fun (_, _, x) -> x)) in
       let scratch =
         Array.create
-          ~len:(List.fold returns ~init:0 ~f:(fun m r -> Int.max m (Array.length r)))
+          ~len:(List.fold returns ~init:0 ~f:(fun m (_, r) -> Int.max m (Array.length r)))
           0
       in
       let draws =
         Array.init config.random_draws ~f:(fun _ ->
-          List.sum (module Float) returns ~f:(draw_mean ~rng ~scratch ~k)
+          List.sum (module Float) returns ~f:(fun (k, r) -> draw_mean ~rng ~scratch ~k r)
           /. Float.of_int (List.length returns))
       in
       let d = Float.of_int (Array.length draws) in
@@ -408,7 +414,7 @@ let run ?(config = Config.default) records =
       let equal = Array.count draws ~f:(fun x -> Float.equal x top) in
       let at_or_above = Array.count draws ~f:(fun x -> Float.( >= ) x top) in
       Some
-        { Baseline.top_k = k
+        { Baseline.top_k = config.top_k
         ; periods = List.length rows
         ; top_k_return = top
         ; random_mean = Stats.mean draws |> Option.value ~default:Float.nan

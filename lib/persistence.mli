@@ -50,13 +50,18 @@ module Config : sig
     ; min_leaders : int (** windows with fewer common participants are skipped *)
     ; bootstrap_samples : int
     ; random_draws : int
+    ; return_cap : float
+    (** baseline returns are capped at this (and floored at -1): a curve that starts from
+        a nearly empty account shows window returns of thousands of percent no follower
+        gets, and one of them would decide the mean of a draw *)
     ; level : float (** of the bootstrap interval *)
     ; seed : int
     }
   [@@deriving sexp_of]
 
   (** 30-day windows of daily bars, Sharpe against Sharpe, quintiles, top 10, 6 horizons,
-      at least 10 leaders, 1000 bootstrap samples and random draws, 95%, seed 0. *)
+      at least 10 leaders, 1000 bootstrap samples and random draws, returns capped at
+      100%, 95%, seed 0. *)
   val default : t
 end
 
@@ -84,7 +89,7 @@ end
 
 module Baseline : sig
   type t =
-    { top_k : int
+    { top_k : int (** a window with fewer than [2 * top_k] participants picks half *)
     ; periods : int
     ; top_k_return : float (** mean over periods of the top [top_k]'s mean return *)
     ; random_mean : float (** mean over draws of the same for random picks *)
