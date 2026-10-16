@@ -31,6 +31,7 @@
   ppx_jane
   yojson
   market-data
+  backtest-stats
   (core_bench :with-test)))
 
 (package

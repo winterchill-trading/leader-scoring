@@ -1,7 +1,7 @@
 (library
  (name leader_scoring)
  (public_name leader-scoring)
- (libraries core async_kernel yojson market-data)
+ (libraries core async_kernel yojson market-data backtest-stats)
  (preprocess
   (pps ppx_jane)))
 
