@@ -157,7 +157,9 @@ module Config = struct
          volume is not chance *)
       wash_min_pairs = 5
     ; wash_min_share = 0.2
-    ; counterparty_min_trades = 3
+    ; (* a simulator run of twenty seconds put six trades of one random pair together;
+         a real pair of colluding accounts trades together far more than ten times *)
+      counterparty_min_trades = 10
     ; counterparty_min_share = 0.05
     ; (* in a market of only watched accounts (a simulator) everyone trades with everyone;
          five times the share random matching gives is not that *)
@@ -176,9 +178,11 @@ module Config = struct
     ; front_run_min_z = 3.
     ; burst_window = Time_ns.Span.of_day 1.
     ; burst_min_accounts = 3
-    ; reference_age = Time_ns.Span.of_sec 2.
-    ; (* 50 bps covers the spread and a fast move between two prints of liquid perps *)
-      off_book_bps = 50.
+    ; reference_age = Time_ns.Span.of_ms 500.
+    ; (* a mainnet leader selling STRK through the book filled 70 to 82 bps below another
+         leader's prints of the same two seconds; a prearranged off-market price is
+         further out than a sweep of a small perp *)
+      off_book_bps = 200.
     ; off_book_min_fills = 3
     ; off_book_min_share = 0.1
     }
@@ -673,8 +677,11 @@ let creation_bursts (config : Config.t) ~created ~linked =
     let accounts = List.map g ~f:fst in
     let first = snd (List.hd_exn g) in
     let last = snd (List.last_exn g) in
-    let linked = List.count accounts ~f:(Set.mem linked) >= 2 in
+    let group_linked = List.count accounts ~f:(Set.mem linked) >= 2 in
     List.map accounts ~f:(fun account ->
+      (* only the members that are themselves linked; one linked pair in a large burst
+         says nothing about the others *)
+      let linked = group_linked && Set.mem linked account in
       ( account
       , { Flag.account
         ; kind = Creation_burst

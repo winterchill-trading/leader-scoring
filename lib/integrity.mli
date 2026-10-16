@@ -26,8 +26,8 @@
       (binomial z of at least [front_run_min_z]). Not checked without a flow, or with a
       flow spanning less than 20 horizons.
     - {b Creation burst}: at least [burst_min_accounts] accounts created (or first seen)
-      within [burst_window] of the first of them. Informational alone; a warning when members
-      are also linked by counterparty or co-trading.
+      within [burst_window] of the first of them. Informational alone; a warning for a
+      member that is also linked to another by counterparty or co-trading flags.
     - {b Off-book price}: fills more than [off_book_bps] outside the reference range at
       that time: the best bid and ask of a recorded quote within [reference_age], or the
       range of other watched accounts' fills in the coin then (never the fill's own
@@ -185,10 +185,10 @@ module Config : sig
     }
   [@@deriving sexp]
 
-  (** Wash: 1 s, 1 bp, 10% size, at least 5 pairs and 20% of volume. Counterparty: 3
-      trades, 5% of volume and 5 times chance. Orders: fills within 1 s. Co-trading: 60 s, 20 matches,
-      similarity 0.3, lift 3. Front-running: 5 s, 50k USD, 20 orders, z 3. Burst: 1 day,
-      3 accounts. Off-book: 2 s, 50 bps, 3 fills and 10%. *)
+  (** Wash: 1 s, 1 bp, 10% size, at least 5 pairs and 20% of volume. Counterparty: 10
+      trades, 5% of volume and 5 times chance. Orders: fills within 1 s. Co-trading:
+      60 s, 20 matches, similarity 0.3, lift 3. Front-running: 5 s, 50k USD, 20 orders,
+      z 3. Burst: 1 day, 3 accounts. Off-book: 0.5 s, 200 bps, 3 fills and 10%. *)
   val default : t
 end
 
