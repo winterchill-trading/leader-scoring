@@ -36,7 +36,7 @@ type t = Stable.V1.t =
 [@@deriving bin_io, sexp, compare, equal]
 
 (** Sorts every list by time (fills by time then id) and drops fills repeated with the
-    same [(id, time, coin)], as overlapping pages return them. *)
+    same [(id, time, coin, side)], as overlapping pages return them. *)
 val normalize : t -> t
 
 (** Keeps what happened in [[from, until]]; snapshots and curve points too. *)
