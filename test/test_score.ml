@@ -63,6 +63,22 @@ let%expect_test "composite of percentiles, flipped where lower is better" =
     |}]
 ;;
 
+let%expect_test "an excluded leader is scored, not ranked, and leaves the pool" =
+  let universe =
+    [ "a", leader ~sharpe:2. ~mdd:0.1 ~lev:1. (), 30.
+    ; "b", leader ~sharpe:1. ~mdd:0.3 ~lev:5. (), 30.
+    ; "c", leader ~sharpe:3. ~mdd:0.5 ~lev:3. (), 30.
+    ]
+  in
+  let excluded = String.Map.singleton "c" [ "integrity: trades with itself" ] in
+  print (Score.rank ~excluded config universe);
+  [%expect {|
+    a      score=100.0 rank=1 pct=1.00
+    b      score=  0.0 rank=2 pct=0.00
+    c      score= 60.0 rank=- pct=- integrity: trades with itself
+    |}]
+;;
+
 let%test_unit "input order does not change scores" =
   let gen =
     let open Quickcheck.Generator.Let_syntax in
