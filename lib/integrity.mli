@@ -7,12 +7,15 @@
     - {b Wash trade}: one account's opposite fills in a coin within [wash_window] at the
       same price (within [wash_price_bps]) and size (within [wash_size_tolerance]):
       volume without price risk.
-    - {b Counterparty}: two watched accounts on opposite sides of the same trades. A
-      group of leaders trading with each other is the shape of a sybil farm.
+    - {b Counterparty}: two watched accounts on opposite sides of the same trades, at
+      least [counterparty_min_share] of one's volume and [counterparty_min_lift] times
+      the share random matching among the watched accounts would give. A group of
+      leaders trading with each other is the shape of a sybil farm.
     - {b Co-trading}: two accounts whose orders (fills of one coin and side, merged within
       a second) land within [co_window] of each other in the same coin and direction far
       more often than chance. Chance is measured by the same count with one side's times
-      shifted by an hour or more, which keeps each account's own rhythm; a pair is linked
+      shifted circularly by sevenths of the observed span, which keeps each account's
+      own rhythm (the check needs a span of at least 20 windows); a pair is linked
       when the observed count is [co_min_lift] times that, at least [co_min_matches]
       orders, and a share [co_min_similarity] of both accounts' orders. Linked accounts
       form clusters (connected components); a "diverse" set of top leaders can be one
@@ -20,9 +23,10 @@
     - {b Front-running of followers}: given a flow of trades (market or follower orders),
       the leader's orders are followed within [front_run_horizon] by net same-direction
       flow of at least [front_run_flow_usd] much more often than at shifted times
-      (binomial z of at least [front_run_min_z]). Not checked without a flow.
-    - {b Creation burst}: accounts created (or first seen) within [burst_window] of each
-      other, at least [burst_min_accounts]. Informational alone; a warning when members
+      (binomial z of at least [front_run_min_z]). Not checked without a flow, or with a
+      flow spanning less than 20 horizons.
+    - {b Creation burst}: at least [burst_min_accounts] accounts created (or first seen)
+      within [burst_window] of the first of them. Informational alone; a warning when members
       are also linked by counterparty or co-trading.
     - {b Off-book price}: fills more than [off_book_bps] outside the reference range at
       that time: the best bid and ask of a recorded quote within [reference_age], or the
@@ -162,6 +166,7 @@ module Config : sig
     ; wash_min_share : float
     ; counterparty_min_trades : int
     ; counterparty_min_share : float
+    ; counterparty_min_lift : float
     ; order_merge : Time_ns.Span.t (** fills of one coin and side this close are one order *)
     ; co_window : Time_ns.Span.t
     ; co_min_matches : int
@@ -181,7 +186,7 @@ module Config : sig
   [@@deriving sexp]
 
   (** Wash: 1 s, 1 bp, 10% size, at least 5 pairs and 20% of volume. Counterparty: 3
-      trades and 5% of volume. Orders: fills within 1 s. Co-trading: 60 s, 20 matches,
+      trades, 5% of volume and 5 times chance. Orders: fills within 1 s. Co-trading: 60 s, 20 matches,
       similarity 0.3, lift 3. Front-running: 5 s, 50k USD, 20 orders, z 3. Burst: 1 day,
       3 accounts. Off-book: 2 s, 50 bps, 3 fills and 10%. *)
   val default : t

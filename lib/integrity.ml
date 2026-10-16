@@ -130,6 +130,7 @@ module Config = struct
     ; wash_min_share : float
     ; counterparty_min_trades : int
     ; counterparty_min_share : float
+    ; counterparty_min_lift : float
     ; order_merge : Time_ns.Span.t
     ; co_window : Time_ns.Span.t
     ; co_min_matches : int
@@ -158,6 +159,9 @@ module Config = struct
     ; wash_min_share = 0.2
     ; counterparty_min_trades = 3
     ; counterparty_min_share = 0.05
+    ; (* in a market of only watched accounts (a simulator) everyone trades with everyone;
+         five times the share random matching gives is not that *)
+      counterparty_min_lift = 5.
     ; order_merge = Time_ns.Span.of_sec 1.
     ; co_window = Time_ns.Span.of_sec 60.
     ; (* leaders reacting to the same news co-trade now and then; twenty matched orders,
@@ -404,14 +408,19 @@ let counterparty_flags (config : Config.t) histories =
     List.map histories ~f:(fun h -> h.account, volume h)
     |> String.Map.of_alist_reduce ~f:( +. )
   in
+  let total = Map.data volume_of |> List.sum (module Float) ~f:Fn.id in
+  let vol x = Map.find volume_of x |> Option.value ~default:0. in
   let strong =
     Hashtbl.to_alist edges
     |> List.filter ~f:(fun ((a, b), (e : Edge.t)) ->
-      let s x = share e.notional (Map.find volume_of x |> Option.value ~default:0.) in
+      let s x = share e.notional (vol x) in
+      (* the share of [x]'s volume against [y] when every watched account trades with
+         every other in proportion to its volume; watched accounts are only part of a real
+         market, so this overstates chance and keeps the lift conservative *)
+      let lift x y = share (s x) (share (vol y) total) in
       e.trades >= config.counterparty_min_trades
-      && Float.( >= )
-           (Float.max (s a) (s b))
-           config.counterparty_min_share)
+      && Float.( >= ) (Float.max (s a) (s b)) config.counterparty_min_share
+      && Float.( >= ) (Float.max (lift a b) (lift b a)) config.counterparty_min_lift)
   in
   let accounts =
     List.concat_map strong ~f:(fun ((a, b), _) -> [ a; b ])
@@ -452,7 +461,18 @@ let counterparty_flags (config : Config.t) histories =
 
 (* Shifts for the chance count: far beyond the window, both directions, so each account
    keeps its own rhythm (time of day, bursts) and only the alignment is broken. *)
-let shifts_ns = List.map [ -3; -2; -1; 1; 2; 3 ] ~f:(fun h -> h * 3600 * 1_000_000_000)
+(* The chance count shifts one side's times circularly inside the observed span
+   [lo, hi] by sevenths of it: each account keeps its own rhythm (bursts, quiet hours) and
+   its density, and only the alignment with the other is broken. A span shorter than
+   [min_spans] windows is too short for that; the check is then skipped. *)
+let min_spans = 20
+
+let circular_shifts ~lo ~hi =
+  let span = hi - lo in
+  List.map [ 1; 2; 3; 4; 5; 6 ] ~f:(fun k ->
+    let delta = k * span / 7 in
+    fun t -> lo + ((t - lo + delta) % span))
+;;
 
 let co_trading_flags (config : Config.t) histories =
   let w = Time_ns.Span.to_int_ns config.co_window in
@@ -470,7 +490,7 @@ let co_trading_flags (config : Config.t) histories =
     Array.mapi orders ~f:(fun i os ->
       let m = Int.Table.create () in
       Array.iter os ~f:(fun (o : Order.t) ->
-        let t = o.time + shift in
+        let t = shift o.time in
         let seen = Int.Hash_set.create () in
         List.iter [ -1; 0; 1 ] ~f:(fun d ->
           Hashtbl.find index (o.coin, o.side, (t / w) + d)
@@ -481,8 +501,11 @@ let co_trading_flags (config : Config.t) histories =
         Hash_set.iter seen ~f:(fun j -> Hashtbl.incr m j));
       m)
   in
-  let observed = count ~shift:0 in
-  let chance = List.map shifts_ns ~f:(fun shift -> count ~shift) in
+  let times = Array.concat_map orders ~f:(Array.map ~f:(fun (o : Order.t) -> o.time)) in
+  match Array.min_elt times ~compare:Int.compare, Array.max_elt times ~compare:Int.compare with
+  | Some lo, Some hi when hi - lo >= min_spans * w ->
+  let observed = count ~shift:Fn.id in
+  let chance = List.map (circular_shifts ~lo ~hi) ~f:(fun shift -> count ~shift) in
   let get tbl j = Hashtbl.find tbl j |> Option.value ~default:0 in
   let links =
     List.concat_map (List.range 0 n) ~f:(fun i ->
@@ -539,6 +562,7 @@ let co_trading_flags (config : Config.t) histories =
             (List.length cluster)
       ; evidence = Co_trading { cluster; peers }
       } ))
+  | _ -> []
 ;;
 
 let front_running_flag (config : Config.t) ~flow (h : History.t) =
@@ -562,23 +586,34 @@ let front_running_flag (config : Config.t) ~flow (h : History.t) =
     Array.count os ~f:(fun (o : Order.t) ->
       Map.mem flow o.coin
       && Float.( >= )
-           (Float.of_int o.side *. net o.coin (o.time + shift))
+           (Float.of_int o.side *. net o.coin (shift o.time))
            config.front_run_flow_usd)
   in
   let n = Array.count os ~f:(fun (o : Order.t) -> Map.mem flow o.coin) in
-  if n < config.front_run_min_orders
-  then None
-  else (
-    let k = followed ~shift:0 in
+  let span =
+    Map.fold flow ~init:None ~f:(fun ~key:_ ~data:(times, _) acc ->
+      if Array.is_empty times
+      then acc
+      else (
+        let lo = times.(0)
+        and hi = times.(Array.length times - 1) in
+        match acc with
+        | None -> Some (lo, hi)
+        | Some (a, b) -> Some (Int.min a lo, Int.max b hi)))
+  in
+  match span with
+  | Some (lo, hi) when n >= config.front_run_min_orders && hi - lo >= min_spans * horizon ->
+    let shifts = circular_shifts ~lo ~hi in
+    let k = followed ~shift:Fn.id in
     let base =
-      List.sum (module Int) shifts_ns ~f:(fun shift -> followed ~shift)
+      List.sum (module Int) shifts ~f:(fun shift -> followed ~shift)
       |> Float.of_int
-      |> fun x -> x /. Float.of_int (n * List.length shifts_ns)
+      |> fun x -> x /. Float.of_int (n * List.length shifts)
     in
     let rate = Float.of_int k /. Float.of_int n in
     (* a base rate of zero would make any hit infinitely significant: floor it at one
        hit in all the shifted samples *)
-    let p = Float.max base (1. /. Float.of_int (n * List.length shifts_ns)) in
+    let p = Float.max base (1. /. Float.of_int (n * List.length shifts)) in
     let z =
       (Float.of_int k -. (Float.of_int n *. p))
       /. Float.sqrt (Float.of_int n *. p *. (1. -. p))
@@ -608,7 +643,8 @@ let front_running_flag (config : Config.t) ~flow (h : History.t) =
               ; flow_usd = config.front_run_flow_usd
               }
         }
-    else None)
+    else None
+  | _ -> None
 ;;
 
 let creation_bursts (config : Config.t) ~created ~linked =
@@ -619,16 +655,20 @@ let creation_bursts (config : Config.t) ~created ~linked =
       | 0 -> String.compare a b
       | c -> c)
   in
-  let groups =
-    List.fold sorted ~init:[] ~f:(fun acc (account, time) ->
-      match acc with
-      | ((_, last) :: _ as g) :: rest
-        when Time_ns.Span.( <= ) (Time_ns.diff time last) config.burst_window ->
-        ((account, time) :: g) :: rest
-      | _ -> [ account, time ] :: acc)
-    |> List.map ~f:List.rev
-    |> List.filter ~f:(fun g -> List.length g >= config.burst_min_accounts)
+  (* a group is every account within [burst_window] of its first one, not a chain of
+     accounts each close to the next, which a steady stream of sign-ups would form *)
+  let rec groups acc = function
+    | [] -> List.rev acc
+    | ((_, first) :: _ as rest) ->
+      let g, after =
+        List.split_while rest ~f:(fun (_, t) ->
+          Time_ns.Span.( <= ) (Time_ns.diff t first) config.burst_window)
+      in
+      if List.length g >= config.burst_min_accounts
+      then groups (g :: acc) after
+      else groups acc (List.tl_exn rest)
   in
+  let groups = groups [] sorted in
   List.concat_map groups ~f:(fun g ->
     let accounts = List.map g ~f:fst in
     let first = snd (List.hd_exn g) in
