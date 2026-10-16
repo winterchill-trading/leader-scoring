@@ -1,7 +1,7 @@
 (** Selection-bias statistics for a ranking of leaders, from backtest-stats.
 
     Picking the best of many leaders is picking the best of many backtests: some look good
-    by luck. Per leader this computes a {!Backtest_stats.Report.t} over its bar returns:
+    by luck. Per leader this computes a [Backtest_stats.Report.t] over its bar returns:
     the probabilistic Sharpe ratio (PSR, the chance the true Sharpe ratio is above zero
     given the track record's length, skewness and kurtosis), the deflated Sharpe ratio
     (DSR: the same against the best Sharpe ratio expected from that many leaders by luck,
