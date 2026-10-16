@@ -332,7 +332,8 @@ let persistence =
            (List.length p.periods);
          Option.iter p.rank_correlation ~f:(fun i ->
            Core.printf
-             "rank correlation %.3f [%.3f, %.3f], t %s, positive in %s of periods, recent %s\n"
+             "rank correlation %.3f [%.3f, %.3f], t %s, positive in %s of periods, \
+              recent %s\n"
              i.estimate
              i.lower
              i.upper
@@ -366,8 +367,8 @@ let persistence =
          let reports = Map.data s.reports in
          let median xs = Stats.quantile (Array.of_list xs) 0.5 in
          Core.printf
-           "stats: %d leaders, trials %s, PSR >= 0.95: %d, DSR >= 0.95: %d, median PSR %s, \
-            median DSR %s, accepted %d\n"
+           "stats: %d leaders, trials %s, PSR >= 0.95: %d, DSR >= 0.95: %d, median PSR \
+            %s, median DSR %s, accepted %d\n"
            u.leaders
            (Option.value_map u.trials ~default:"-" ~f:(fun t ->
               sprintf "%d (Sharpe variance %.3g)" t.count t.sharpe_variance))

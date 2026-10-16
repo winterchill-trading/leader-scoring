@@ -185,9 +185,7 @@ let measure_window (rule : Rule.t) (config : Config.t) ~from ~until records =
       List.map records ~f:(fun (r : Track_record.t) ->
         let w = Track_record.window r ~from ~until in
         let m =
-          Metrics.compute
-            ~config:{ Metrics.Config.default with bar = Some config.bar }
-            w
+          Metrics.compute ~config:{ Metrics.Config.default with bar = Some config.bar } w
         in
         r.account, m, Time_ns.Span.to_day (Time_ns.diff until from))
     in
@@ -254,7 +252,8 @@ let percentile_of_rank ~n rank =
 
 let interval xs ~level ~estimate =
   match
-    Stats.quantile xs ((1. -. level) /. 2.), Stats.quantile xs (1. -. ((1. -. level) /. 2.))
+    ( Stats.quantile xs ((1. -. level) /. 2.)
+    , Stats.quantile xs (1. -. ((1. -. level) /. 2.)) )
   with
   | Some lower, Some upper -> Some { Interval.estimate; lower; upper; level }
   | _ -> None
@@ -265,7 +264,9 @@ let bootstrap_mean_spearman ~rng ~samples (periods : (float array * float array)
     List.filter_map periods ~f:(fun (f, o) ->
       let n = Array.length f in
       let idx = Array.init n ~f:(fun _ -> Random.State.int rng n) in
-      Stats.spearman (Array.map idx ~f:(fun i -> f.(i))) (Array.map idx ~f:(fun i -> o.(i))))
+      Stats.spearman
+        (Array.map idx ~f:(fun i -> f.(i)))
+        (Array.map idx ~f:(fun i -> o.(i))))
     |> Array.of_list
     |> Stats.mean)
   |> Array.filter_opt
@@ -295,7 +296,8 @@ let top_k_mean ~k (rows : (string * float * float) array) =
     match Float.compare fb fa with
     | 0 -> String.compare a b
     | c -> c);
-  Array.sub sorted ~pos:0 ~len:k |> Array.sum (module Float) ~f:(fun (_, _, r) -> r)
+  Array.sub sorted ~pos:0 ~len:k
+  |> Array.sum (module Float) ~f:(fun (_, _, r) -> r)
   |> fun s -> s /. Float.of_int k
 ;;
 
@@ -305,9 +307,11 @@ let run ?(config = Config.default) records =
   let enough m = Map.length m >= config.min_leaders in
   let rng = Random.State.make [| config.seed |] in
   let period_rows h =
-    List.filter_map (List.range 0 (Int.max 0 (n_windows - h))) ~f:(fun k ->
-      let rows = pairs ws.(k).formation ws.(k + h).outcome in
-      if Array.length rows >= config.min_leaders then Some (k, rows) else None)
+    List.filter_map
+      (List.range 0 (Int.max 0 (n_windows - h)))
+      ~f:(fun k ->
+        let rows = pairs ws.(k).formation ws.(k + h).outcome in
+        if Array.length rows >= config.min_leaders then Some (k, rows) else None)
   in
   let next = period_rows 1 in
   let spearman rows =
@@ -377,20 +381,23 @@ let run ?(config = Config.default) records =
         incr top_total;
         if Float.( >= ) (percentile_of_rank ~n ro.(i)) 0.5 then incr top_stay)));
   let decay =
-    List.map (List.range 1 (config.horizons + 1)) ~f:(fun h ->
-      let ps = period_rows h in
-      { Decay_point.horizon = h
-      ; periods = List.length ps
-      ; mean_rank_correlation = mean_opt (List.map ps ~f:(fun (_, rows) -> spearman rows))
-      })
+    List.map
+      (List.range 1 (config.horizons + 1))
+      ~f:(fun h ->
+        let ps = period_rows h in
+        { Decay_point.horizon = h
+        ; periods = List.length ps
+        ; mean_rank_correlation =
+            mean_opt (List.map ps ~f:(fun (_, rows) -> spearman rows))
+        })
   in
   let baseline =
     match baseline_rows with
     | [] -> None
     | rows ->
       let rows = List.map rows ~f:snd in
-      (* each window picks [top_k], or half its participants when it has fewer than
-         twice that *)
+      (* each window picks [top_k], or half its participants when it has fewer than twice
+         that *)
       let k_of r = Int.max 1 (Int.min config.top_k (Array.length r / 2)) in
       let top =
         List.map rows ~f:(fun r -> top_k_mean ~k:(k_of r) r)
@@ -481,9 +488,9 @@ let run ?(config = Config.default) records =
   ; baseline
   ; persistent
   ; fading =
-      persistent
-      &&
-      (match recent_rank_correlation with
+      (persistent
+       &&
+       match recent_rank_correlation with
        | Some r -> Float.( <= ) r 0.
        | None -> false)
   ; by_leader

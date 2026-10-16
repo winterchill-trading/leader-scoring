@@ -84,11 +84,16 @@ let common_window (config : Config.t) records =
         then (
           let e =
             Array.init (config.common_bars + 1) ~f:(fun k ->
-              Track_record.equity_at r (Time_ns.add from (Time_ns.Span.scale_int config.bar k))
+              Track_record.equity_at
+                r
+                (Time_ns.add from (Time_ns.Span.scale_int config.bar k))
               |> Option.value ~default:Float.nan)
           in
           if Array.for_all e ~f:(fun x -> Float.is_finite x && Float.( > ) x 0.)
-          then Some (r.account, Array.init config.common_bars ~f:(fun k -> (e.(k + 1) /. e.(k)) -. 1.))
+          then
+            Some
+              ( r.account
+              , Array.init config.common_bars ~f:(fun k -> (e.(k + 1) /. e.(k)) -. 1.) )
           else None)
         else None)
     in
@@ -106,9 +111,7 @@ let run ?(config = Config.default) records =
   let series =
     List.filter_map records ~f:(fun (r : Track_record.t) ->
       let rs = returns r ~bar:config.bar in
-      if Array.length rs < 3
-      then None
-      else Some (r, rs))
+      if Array.length rs < 3 then None else Some (r, rs))
   in
   let finite_rows =
     List.filter_map series ~f:(fun (_, rs) ->
@@ -191,8 +194,7 @@ let run ?(config = Config.default) records =
       ; common_periods = (if Array.is_empty matrix then 0 else config.common_bars)
       ; pbo
       ; spa
-      ; spa_best =
-          Option.bind spa ~f:(fun s -> List.nth rows s.best |> Option.map ~f:fst)
+      ; spa_best = Option.bind spa ~f:(fun s -> List.nth rows s.best |> Option.map ~f:fst)
       ; reality_check
       ; accepted =
           Map.count reports ~f:(fun r ->
@@ -222,16 +224,18 @@ let universe_json (u : Universe.t) =
     ; ( "trials"
       , match u.trials with
         | None -> `Null
-        | Some t -> `Assoc [ "count", `Int t.count; "sharpe_variance", num t.sharpe_variance ]
-      )
+        | Some t ->
+          `Assoc [ "count", `Int t.count; "sharpe_variance", num t.sharpe_variance ] )
     ; "common_from_ms", ms u.common_from
     ; "common_until_ms", ms u.common_until
     ; "common_leaders", `Int u.common_leaders
     ; "common_periods", `Int u.common_periods
     ; "pbo", opt (Option.map u.pbo ~f:(fun p -> p.pbo))
-    ; "pbo_combinations", Option.value_map u.pbo ~default:`Null ~f:(fun p -> `Int p.combinations)
+    ; ( "pbo_combinations"
+      , Option.value_map u.pbo ~default:`Null ~f:(fun p -> `Int p.combinations) )
     ; "pbo_degradation_slope", opt (Option.map u.pbo ~f:(fun p -> p.degradation_slope))
-    ; "pbo_probability_of_loss", opt (Option.map u.pbo ~f:(fun p -> p.probability_of_loss))
+    ; ( "pbo_probability_of_loss"
+      , opt (Option.map u.pbo ~f:(fun p -> p.probability_of_loss)) )
     ; "spa_p_value", opt (Option.map u.spa ~f:(fun s -> s.p_value_consistent))
     ; "spa_best", Option.value_map u.spa_best ~default:`Null ~f:(fun s -> `String s)
     ; "reality_check_p_value", opt (Option.map u.reality_check ~f:(fun c -> c.p_value))

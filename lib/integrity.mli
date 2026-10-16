@@ -1,25 +1,24 @@
-(** Filters for leaders that look manipulated or cannot really be copied. Each check yields
-    a typed {!Flag.t} with its evidence; {!Policy} says which flags take a leader out of
-    the ranking ({!Report.rank}).
+(** Filters for leaders that look manipulated or cannot really be copied. Each check
+    yields a typed {!Flag.t} with its evidence; {!Policy} says which flags take a leader
+    out of the ranking ({!Report.rank}).
 
-    - {b Self trade}: one account on both sides of the same trade (the same trade id, coin,
-      time and price, opposite sides).
+    - {b Self trade}: one account on both sides of the same trade (the same trade id,
+      coin, time and price, opposite sides).
     - {b Wash trade}: one account's opposite fills in a coin within [wash_window] at the
-      same price (within [wash_price_bps]) and size (within [wash_size_tolerance]):
-      volume without price risk.
+      same price (within [wash_price_bps]) and size (within [wash_size_tolerance]): volume
+      without price risk.
     - {b Counterparty}: two watched accounts on opposite sides of the same trades, at
-      least [counterparty_min_share] of one's volume and [counterparty_min_lift] times
-      the share random matching among the watched accounts would give. A group of
-      leaders trading with each other is the shape of a sybil farm.
+      least [counterparty_min_share] of one's volume and [counterparty_min_lift] times the
+      share random matching among the watched accounts would give. A group of leaders
+      trading with each other is the shape of a sybil farm.
     - {b Co-trading}: two accounts whose orders (fills of one coin and side, merged within
       a second) land within [co_window] of each other in the same coin and direction far
       more often than chance. Chance is measured by the same count with one side's times
-      shifted circularly by sevenths of the observed span, which keeps each account's
-      own rhythm (the check needs a span of at least 20 windows); a pair is linked
-      when the observed count is [co_min_lift] times that, at least [co_min_matches]
-      orders, and a share [co_min_similarity] of both accounts' orders. Linked accounts
-      form clusters (connected components); a "diverse" set of top leaders can be one
-      cluster.
+      shifted circularly by sevenths of the observed span, which keeps each account's own
+      rhythm (the check needs a span of at least 20 windows); a pair is linked when the
+      observed count is [co_min_lift] times that, at least [co_min_matches] orders, and a
+      share [co_min_similarity] of both accounts' orders. Linked accounts form clusters
+      (connected components); a "diverse" set of top leaders can be one cluster.
     - {b Front-running of followers}: given a flow of trades (market or follower orders),
       the leader's orders are followed within [front_run_horizon] by net same-direction
       flow of at least [front_run_flow_usd] much more often than at shifted times
@@ -33,9 +32,9 @@
       range of other watched accounts' fills in the coin then (never the fill's own
       trade). Fills nobody can see are not prices a follower can get.
 
-    Thresholds are deliberately loose against honest traders: leaders who simply trade
-    the same news co-trade a little; the lift over shifted times and the share of orders
-    keep that from being a cluster. *)
+    Thresholds are deliberately loose against honest traders: leaders who simply trade the
+    same news co-trade a little; the lift over shifted times and the share of orders keep
+    that from being a cluster. *)
 
 open! Core
 
@@ -50,8 +49,8 @@ module Kind : sig
     | Off_book_price
   [@@deriving sexp, compare, equal, enumerate]
 
-  (** ["self_trade"], ["wash_trade"], ["counterparty"], ["co_trading"],
-      ["front_running"], ["creation_burst"], ["off_book_price"]. *)
+  (** ["self_trade"], ["wash_trade"], ["counterparty"], ["co_trading"], ["front_running"],
+      ["creation_burst"], ["off_book_price"]. *)
   val to_string : t -> string
 end
 
@@ -167,7 +166,8 @@ module Config : sig
     ; counterparty_min_trades : int
     ; counterparty_min_share : float
     ; counterparty_min_lift : float
-    ; order_merge : Time_ns.Span.t (** fills of one coin and side this close are one order *)
+    ; order_merge : Time_ns.Span.t
+    (** fills of one coin and side this close are one order *)
     ; co_window : Time_ns.Span.t
     ; co_min_matches : int
     ; co_min_similarity : float
@@ -186,9 +186,9 @@ module Config : sig
   [@@deriving sexp]
 
   (** Wash: 1 s, 1 bp, 10% size, at least 5 pairs and 20% of volume. Counterparty: 10
-      trades, 5% of volume and 5 times chance. Orders: fills within 1 s. Co-trading:
-      60 s, 20 matches, similarity 0.3, lift 3. Front-running: 5 s, 50k USD, 20 orders,
-      z 3. Burst: 1 day, 3 accounts. Off-book: 0.5 s, 200 bps, 3 fills and 10%. *)
+      trades, 5% of volume and 5 times chance. Orders: fills within 1 s. Co-trading: 60 s,
+      20 matches, similarity 0.3, lift 3. Front-running: 5 s, 50k USD, 20 orders, z 3.
+      Burst: 1 day, 3 accounts. Off-book: 0.5 s, 200 bps, 3 fills and 10%. *)
   val default : t
 end
 

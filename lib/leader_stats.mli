@@ -65,7 +65,8 @@ val returns : Track_record.t -> bar:Time_ns.Span.t -> float array
 
 val run : ?config:Config.t -> Track_record.t list -> t
 
-(** [{"leaders", "bar_days", "periods_per_year", "trials": {"count", "sharpe_variance"} | null, "common_from_ms", "common_until_ms", "common_leaders", "common_periods", "pbo", "pbo_combinations", "pbo_degradation_slope", "pbo_probability_of_loss", "spa_p_value", "spa_best", "reality_check_p_value", "accepted"}], probabilities as fractions, [null] where not computed. *)
+(** [{"leaders", "bar_days", "periods_per_year", "trials": {"count", "sharpe_variance"} | null, "common_from_ms", "common_until_ms", "common_leaders", "common_periods", "pbo", "pbo_combinations", "pbo_degradation_slope", "pbo_probability_of_loss", "spa_p_value", "spa_best", "reality_check_p_value", "accepted"}],
+    probabilities as fractions, [null] where not computed. *)
 val universe_json : Universe.t -> Yojson.Safe.t
 
 (** A leader's report in the short form a page shows:

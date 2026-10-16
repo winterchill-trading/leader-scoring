@@ -84,8 +84,8 @@ let rank ?(excluded = String.Map.empty) (config : Config.t) universe =
     List.map universe ~f:(fun (account, metrics, days) ->
       ( account
       , metrics
-      , eligibility metrics days
-        @ (Map.find excluded account |> Option.value ~default:[]) ))
+      , eligibility metrics days @ (Map.find excluded account |> Option.value ~default:[])
+      ))
   in
   (* Percentiles are taken among eligible leaders; when nobody is eligible, among all. *)
   let pool =

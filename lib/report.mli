@@ -66,9 +66,9 @@ val rank
   -> (t * Score.Ranked.t) list
 
 (** [{"account", "equity_source", "from_ms", "until_ms", "fills", "fills_truncated", "bar_seconds", "score": {...} | null, "predicted_forward_sharpe", "metrics": [...], "equity_curve": [[ms, equity], ...], "capacity": {...} | null, "alerts": [...], "persistence": {...} | null, "stats": {...} | null, "integrity": [...]}]
-    ({!Persistence.leader_json}, {!Leader_stats.leader_json}, {!Integrity.flag_json}).
-    The curve is thinned to at most [max_points] (default 400) evenly spaced points,
-    always keeping the first and last. *)
+    ({!Persistence.leader_json}, {!Leader_stats.leader_json}, {!Integrity.flag_json}). The
+    curve is thinned to at most [max_points] (default 400) evenly spaced points, always
+    keeping the first and last. *)
 val to_json : ?max_points:int -> t -> Score.Ranked.t option -> Yojson.Safe.t
 
 (** Every metric with its name, label, unit, direction and formula. *)

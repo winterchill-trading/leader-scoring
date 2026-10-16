@@ -34,8 +34,8 @@ let normalize t =
   let fills =
     List.stable_sort t.fills ~compare:Fill.compare_by_time
     |> List.remove_consecutive_duplicates ~equal:(fun (a : Fill.t) b ->
-      (* the side is part of the key: an account on both sides of one trade (a self
-         trade) has two fills with the same id, time and coin, and both happened *)
+      (* the side is part of the key: an account on both sides of one trade (a self trade)
+         has two fills with the same id, time and coin, and both happened *)
       a.id = b.id
       && Time_ns.equal a.time b.time
       && String.equal a.coin b.coin

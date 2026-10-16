@@ -5,9 +5,9 @@
     Time is cut into consecutive windows of [window] on a grid of multiples of [window]
     since the epoch, so every leader's windows line up. A leader takes part in window [k]
     when its record covers the whole window. Within a window a leader is measured on the
-    end-of-bar equity ([bar] apart): {!Rule.Return} is the window's return,
-    {!Rule.Sharpe} the per-bar Sharpe ratio (not annualized), {!Rule.Composite} the
-    {!Score} composite of {!Metrics} computed on the window.
+    end-of-bar equity ([bar] apart): {!Rule.Return} is the window's return, {!Rule.Sharpe}
+    the per-bar Sharpe ratio (not annualized), {!Rule.Composite} the {!Score} composite of
+    {!Metrics} computed on the window.
 
     For each window [k] followed by window [k + h]:
 
@@ -18,10 +18,10 @@
     - a {b transition matrix}: counts of leaders moving from formation quantile [i] to
       outcome quantile [j] (quantile 0 is the bottom), pooled over windows;
     - a {b decay curve}: the mean rank correlation for horizons [h = 1 .. horizons];
-    - a {b random-selection baseline}: the mean next-window return of the [top_k]
-      leaders by formation measure, against the same mean for [top_k] leaders drawn at
-      random from the same window's participants ([random_draws] draws, each averaged over
-      every window). A ranking that cannot beat random picks should not be shown as one.
+    - a {b random-selection baseline}: the mean next-window return of the [top_k] leaders
+      by formation measure, against the same mean for [top_k] leaders drawn at random from
+      the same window's participants ([random_draws] draws, each averaged over every
+      window). A ranking that cannot beat random picks should not be shown as one.
 
     The ranking is called {e persistent} when the rank-correlation interval lies above
     zero and the top [top_k] beat at least 95% of the random draws. *)
